@@ -31,6 +31,14 @@ fun UpdateDialogs(vm: GameViewModel) {
             text = {
                 Column(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
                     Text(tr("目前版本：$version", "現在のバージョン：$version"))
+                    Text(
+                        tr(
+                            "下載完成後開啟 APK 即可覆蓋安裝，紀錄會保留。",
+                            "ダウンロード後に APK を開くと上書きインストールされます（記録は保持されます）。",
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
                     if (r.notes.isNotBlank()) {
                         Text(
                             r.notes.trim(),
@@ -44,7 +52,7 @@ fun UpdateDialogs(vm: GameViewModel) {
                 TextButton(onClick = {
                     runCatching { uriHandler.openUri(r.url) }
                     vm.dismissUpdate()
-                }) { Text(tr("前往下載", "ダウンロード")) }
+                }) { Text(tr("下載 APK", "APK をダウンロード")) }
             },
             dismissButton = {
                 Row {

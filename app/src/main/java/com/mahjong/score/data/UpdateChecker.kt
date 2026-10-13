@@ -4,6 +4,7 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
+/** url：APK 的直接下載連結；release 沒有附 APK 時為 Release 頁面 */
 data class ReleaseInfo(val tag: String, val version: String, val url: String, val notes: String)
 
 /** 以 GitHub Releases 的最新版本檢查更新 */
@@ -21,10 +22,16 @@ object UpdateChecker {
             if (conn.responseCode != HttpURLConnection.HTTP_OK) return@runCatching null
             val o = JSONObject(conn.inputStream.bufferedReader().use { it.readText() })
             val tag = o.getString("tag_name")
+            val assets = o.optJSONArray("assets")
+            val apkUrl = (0 until (assets?.length() ?: 0))
+                .map { assets!!.getJSONObject(it) }
+                .firstOrNull { it.optString("name").endsWith(".apk", ignoreCase = true) }
+                ?.optString("browser_download_url")
+                ?.takeIf { it.isNotEmpty() }
             ReleaseInfo(
                 tag = tag,
                 version = tag.trimStart('v', 'V'),
-                url = o.optString("html_url", RELEASES_URL),
+                url = apkUrl ?: o.optString("html_url", RELEASES_URL),
                 notes = o.optString("body", ""),
             )
         } finally {

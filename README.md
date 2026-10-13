@@ -30,12 +30,12 @@
 
 ## 下載
 
-到 [Releases](https://github.com/agenga0320/JapaneseMajongPointCalculator/releases/latest) 下載最新的 APK 安裝。
+到 [Releases](https://github.com/agenga0320/JapaneseMajongPointCalculator/releases/latest) 頁面下方「Assets」中，下載 `JapaneseMahjongPointCalculator-vX.X.X.apk` 安裝。
 
 ## 更新檢查
 
 - App 啟動時會查詢 GitHub 最新的 Release，若 tag（如 `v1.1.0`）比目前版本新，就顯示更新對話框
-- 「前往下載」開啟 Release 頁面；「忽略此版本」之後不再提示該版本，直到更新的版本發布；「稍後」只關閉這一次
+- 「下載 APK」直接下載 Release 附加的 `.apk`（沒有附 APK 時開啟 Release 頁面）；「忽略此版本」之後不再提示該版本，直到更新的版本發布；「稍後」只關閉這一次
 - 首頁底部的「檢查更新」可手動檢查（已忽略的版本也會顯示）
 
 ### 發布新版本

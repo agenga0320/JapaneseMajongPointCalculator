@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 兩支千點棒（中央一個紅點），斜放 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:rotation="-40">
+        <!-- 影子 -->
+        <path
+            android:fillColor="#33000000"
+            android:pathData="M37,31a7,7 0,0 1,14 0v48a7,7 0,0 1,-14 0z" />
+        <path
+            android:fillColor="#33000000"
+            android:pathData="M59,31a7,7 0,0 1,14 0v48a7,7 0,0 1,-14 0z" />
+        <!-- 點棒本體 -->
+        <path
+            android:fillColor="#FFFDF5"
+            android:strokeColor="#C9C2B0"
+            android:strokeWidth="1.2"
+            android:pathData="M35,29a7,7 0,0 1,14 0v48a7,7 0,0 1,-14 0z" />
+        <path
+            android:fillColor="#FFFDF5"
+            android:strokeColor="#C9C2B0"
+            android:strokeWidth="1.2"
+            android:pathData="M57,29a7,7 0,0 1,14 0v48a7,7 0,0 1,-14 0z" />
+        <!-- 紅點 -->
+        <path
+            android:fillColor="#D32F2F"
+            android:pathData="M42,53m-4.2,0a4.2,4.2 0,1 1,8.4 0a4.2,4.2 0,1 1,-8.4 0" />
+        <path
+            android:fillColor="#D32F2F"
+            android:pathData="M64,53m-4.2,0a4.2,4.2 0,1 1,8.4 0a4.2,4.2 0,1 1,-8.4 0" />
+    </group>
+</vector>

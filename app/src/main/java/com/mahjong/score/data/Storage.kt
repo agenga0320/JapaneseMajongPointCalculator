@@ -2,6 +2,8 @@ package com.mahjong.score.data
 
 import android.content.Context
 import com.mahjong.score.model.AppLang
+import com.mahjong.score.model.FuItem
+import com.mahjong.score.model.FuKind
 import com.mahjong.score.model.Game
 import com.mahjong.score.model.HandRecord
 import com.mahjong.score.model.RoundState
@@ -133,6 +135,15 @@ private fun recordToJson(r: HandRecord) = JSONObject().apply {
                         })
                     }
                 })
+                put("fu_items", JSONArray().apply {
+                    w.fuItems.forEach { f ->
+                        put(JSONObject().apply {
+                            put("k", f.kind.name)
+                            put("fu", f.fu)
+                            put("tile", f.tile)
+                        })
+                    }
+                })
             })
         }
     })
@@ -152,6 +163,7 @@ private fun recordFromJson(x: JSONObject): HandRecord {
         List(a.length()) { i ->
             val w = a.getJSONObject(i)
             val ys = w.optJSONArray("yaku") ?: JSONArray()
+            val fs = w.optJSONArray("fu_items") ?: JSONArray()
             Win(
                 winner = w.getInt("winner"),
                 han = w.getInt("han"),
@@ -160,6 +172,10 @@ private fun recordFromJson(x: JSONObject): HandRecord {
                 yaku = List(ys.length()) { j -> ys.getJSONObject(j) }.mapNotNull { y ->
                     val key = runCatching { Yaku.valueOf(y.getString("k")) }.getOrNull() ?: return@mapNotNull null
                     YakuItem(key, y.getInt("han"), y.optInt("ym", 0), y.optInt("tile", -1))
+                },
+                fuItems = List(fs.length()) { j -> fs.getJSONObject(j) }.mapNotNull { f ->
+                    val key = runCatching { FuKind.valueOf(f.getString("k")) }.getOrNull() ?: return@mapNotNull null
+                    FuItem(key, f.getInt("fu"), f.optInt("tile", -1))
                 },
             )
         }

@@ -51,7 +51,7 @@ fun CalcScreen(onBack: () -> Unit) {
                 onClick = { showEntry = true },
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             ) { Text(tr("輸入手牌，自動判定役・符", "手牌を入力して役・符を自動判定")) }
-            HanFuPicker(input) { input = it.copy(yaku = emptyList()) }
+            HanFuPicker(input) { input = it.manual() }
 
             Card(
                 Modifier.fillMaxWidth().padding(top = 16.dp),

@@ -22,6 +22,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -29,6 +33,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mahjong.score.model.AppLang
+import com.mahjong.score.model.FuItem
 import com.mahjong.score.model.Game
 import com.mahjong.score.model.GameLogic
 import com.mahjong.score.model.YakuItem
@@ -98,15 +103,23 @@ fun PlayerChips(
 }
 
 /** 翻數選擇的編碼：1..13 = 翻數（13 = 累計役滿），101..103 = 役滿倍數 */
-data class HandInput(val hanCode: Int = 1, val fu: Int = 30, val yaku: List<YakuItem> = emptyList()) {
+data class HandInput(
+    val hanCode: Int = 1,
+    val fu: Int = 30,
+    val yaku: List<YakuItem> = emptyList(),
+    val fuItems: List<FuItem> = emptyList(),
+) {
     val han: Int get() = if (hanCode > 100) 13 else hanCode
     val yakuman: Int get() = if (hanCode > 100) hanCode - 100 else 0
     val fuMatters: Boolean get() = hanCode < 5
 
+    /** 手動改翻符時，手牌判定的明細就不再對應，一併清除 */
+    fun manual(): HandInput = copy(yaku = emptyList(), fuItems = emptyList())
+
     companion object {
         fun fromResult(r: HandResult): HandInput =
-            if (r.yakuman > 0) HandInput(100 + r.yakuman.coerceAtMost(3), 30, r.yaku)
-            else HandInput(r.han.coerceAtMost(13), r.fu, r.yaku)
+            if (r.yakuman > 0) HandInput(100 + r.yakuman.coerceAtMost(3), 30, r.yaku, r.fuItems)
+            else HandInput(r.han.coerceAtMost(13), r.fu, r.yaku, r.fuItems)
     }
 }
 
@@ -167,7 +180,9 @@ fun DeltaRow(names: List<String>, deltas: List<Int>) {
 @Composable
 fun RecordItem(game: Game, record: HandRecord) {
     val names = game.names
-    Card(Modifier.fillMaxWidth()) {
+    var showDetail by remember { mutableStateOf(false) }
+    if (showDetail) RecordDetailDialog(game, record) { showDetail = false }
+    Card(onClick = { showDetail = true }, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp)) {
             Text(record.title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             Text(GameLogic.describe(record, names, game.rules, LocalLang.current), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 4.dp))

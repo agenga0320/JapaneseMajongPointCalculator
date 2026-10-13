@@ -40,7 +40,7 @@ fun WinScreen(vm: GameViewModel, onDone: () -> Unit, onBack: () -> Unit) {
     var entryFor by remember { mutableStateOf<Int?>(null) }
 
     val lang = LocalLang.current
-    val wins = hands.map { (p, h) -> Win(p, h.han, h.fu, h.yakuman, h.yaku) }
+    val wins = hands.map { (p, h) -> Win(p, h.han, h.fu, h.yakuman, h.yaku, h.fuItems) }
     val payer = if (tsumo) null else loser
     val valid = wins.isNotEmpty() && (tsumo || loser != null)
     val deltas = if (valid) GameLogic.winDeltas(game, wins, payer, riichi).toList() else null
@@ -112,7 +112,7 @@ fun WinScreen(vm: GameViewModel, onDone: () -> Unit, onBack: () -> Unit) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 8.dp),
                         )
-                        HanFuPicker(h) { hands = hands + (p to it.copy(yaku = emptyList())) }
+                        HanFuPicker(h) { hands = hands + (p to it.manual()) }
                         val pay = Scoring.payment(h.han, h.fu, h.yakuman, isDealer, game.rules.kiriage)
                         Text(
                             Scoring.handLabel(h.han, h.fu, h.yakuman, game.rules.kiriage, lang) + "　" +

@@ -36,8 +36,15 @@ data class HandRecord(
     val title: String get() = roundTitle(before)
 }
 
-/** yaku：由手牌判定得到的役（手動輸入翻符時為空） */
-data class Win(val winner: Int, val han: Int, val fu: Int, val yakuman: Int, val yaku: List<YakuItem> = emptyList())
+/** yaku / fuItems：由手牌判定得到的役與符的明細（手動輸入翻符時為空） */
+data class Win(
+    val winner: Int,
+    val han: Int,
+    val fu: Int,
+    val yakuman: Int,
+    val yaku: List<YakuItem> = emptyList(),
+    val fuItems: List<FuItem> = emptyList(),
+)
 
 data class Standing(val player: Int, val rank: Int, val score: Int, val pt: Double)
 

@@ -1,6 +1,7 @@
 package com.mahjong.score
 
 import com.mahjong.score.model.Analysis
+import com.mahjong.score.model.AppLang
 import com.mahjong.score.model.HandAnalyzer
 import com.mahjong.score.model.HandResult
 import com.mahjong.score.model.Meld
@@ -32,7 +33,7 @@ class HandAnalyzerTest {
         return (a as Analysis.Agari).result
     }
 
-    private fun HandResult.names() = yaku.map { it.name }.toSet()
+    private fun HandResult.names() = yaku.map { it.label(AppLang.ZH) }.toSet()
 
     @Test
     fun pinfuTsumo() {

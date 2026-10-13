@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.mahjong.score.model.Analysis
+import com.mahjong.score.model.AppLang
 import com.mahjong.score.model.HandAnalyzer
 import com.mahjong.score.model.HandResult
 import com.mahjong.score.model.Meld
@@ -154,7 +155,7 @@ fun HandEntryDialog(
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize()) {
-            Scaffold(topBar = { SimpleTopBar("輸入手牌", onDismiss) }) { pad ->
+            Scaffold(topBar = { SimpleTopBar(tr("輸入手牌", "手牌入力"), onDismiss) }) { pad ->
                 Column(Modifier.padding(pad).fillMaxSize()) {
                     Column(
                         Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
@@ -163,7 +164,9 @@ fun HandEntryDialog(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             SectionTitle("手牌（門前）${hand.size} / $need")
                             Spacer(Modifier.weight(1f))
-                            TextButton(onClick = { hand = emptyList(); melds = emptyList(); mode = null }) { Text("全部清除") }
+                            TextButton(onClick = { hand = emptyList(); melds = emptyList(); mode = null }) {
+                                Text(tr("全部清除", "全てクリア"))
+                            }
                         }
                         val full = hand.isNotEmpty() && hand.size == need
                         val body = (if (full) hand.indices.toList().dropLast(1) else hand.indices.toList())
@@ -186,7 +189,8 @@ fun HandEntryDialog(
                             }
                         }
                         Text(
-                            if (hand.isEmpty()) "從下方選牌加入手牌" else "點牌移除；長按設為和了牌（紅框為和了牌）",
+                            if (hand.isEmpty()) tr("從下方選牌加入手牌", "下の牌をタップして手牌に追加")
+                            else tr("點牌移除；長按設為和了牌（紅框為和了牌）", "タップで削除・長押しで和了牌に設定（赤枠が和了牌）"),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 4.dp),
@@ -195,7 +199,7 @@ fun HandEntryDialog(
                         // ---- 副露 ----
                         SectionTitle("副露")
                         if (melds.isEmpty()) {
-                            Text("無（門前）", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(tr("無（門前）", "なし（門前）"), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -208,13 +212,13 @@ fun HandEntryDialog(
                                             TileView(t, SMALL_TILE, onClick = { melds = melds.filterIndexed { j, _ -> j != i } })
                                         }
                                     }
-                                    Text(m.type.label, style = MaterialTheme.typography.labelSmall)
+                                    Text(m.type.label(LocalLang.current), style = MaterialTheme.typography.labelSmall)
                                 }
                             }
                         }
                         if (melds.isNotEmpty()) {
                             Text(
-                                "點副露可移除",
+                                tr("點副露可移除", "タップで副露を削除"),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 4.dp),
@@ -222,28 +226,38 @@ fun HandEntryDialog(
                         }
 
                         // ---- 狀況 ----
-                        SectionTitle("狀況")
+                        SectionTitle(tr("狀況", "状況"))
                         if (!lockTsumo) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                FilterChip(selected = !sit.tsumo, onClick = { sit = sit.copy(tsumo = false) }, label = { Text("榮和") })
-                                FilterChip(selected = sit.tsumo, onClick = { sit = sit.copy(tsumo = true) }, label = { Text("自摸") })
+                                FilterChip(
+                                    selected = !sit.tsumo,
+                                    onClick = { sit = sit.copy(tsumo = false) },
+                                    label = { Text(tr("榮和", "ロン")) },
+                                )
+                                FilterChip(
+                                    selected = sit.tsumo,
+                                    onClick = { sit = sit.copy(tsumo = true) },
+                                    label = { Text(tr("自摸", "ツモ")) },
+                                )
                             }
                         }
                         WindChips("場風", sit.roundWind) { sit = sit.copy(roundWind = it) }
                         WindChips("自風", sit.seatWind) { sit = sit.copy(seatWind = it) }
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            OptionChip("立直", sit.riichi, menzen) { sit = sit.copy(riichi = it, doubleRiichi = false) }
-                            OptionChip("兩立直", sit.doubleRiichi, menzen) { sit = sit.copy(doubleRiichi = it, riichi = false) }
-                            OptionChip("一發", sit.ippatsu, menzen && (sit.riichi || sit.doubleRiichi)) { sit = sit.copy(ippatsu = it) }
+                            OptionChip(tr("立直", "リーチ"), sit.riichi, menzen) { sit = sit.copy(riichi = it, doubleRiichi = false) }
+                            OptionChip(tr("兩立直", "ダブルリーチ"), sit.doubleRiichi, menzen) { sit = sit.copy(doubleRiichi = it, riichi = false) }
+                            OptionChip(tr("一發", "一発"), sit.ippatsu, menzen && (sit.riichi || sit.doubleRiichi)) { sit = sit.copy(ippatsu = it) }
                             OptionChip(if (sit.tsumo) "海底摸月" else "河底撈魚", sit.lastTile) { sit = sit.copy(lastTile = it) }
                             OptionChip("嶺上開花", sit.rinshan, sit.tsumo) { sit = sit.copy(rinshan = it) }
                             OptionChip("搶槓", sit.chankan, !sit.tsumo) { sit = sit.copy(chankan = it) }
                             OptionChip(if (sit.dealer) "天和" else "地和", sit.tenhou, sit.tsumo && menzen) { sit = sit.copy(tenhou = it) }
                         }
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            Stepper("寶牌", sit.dora) { sit = sit.copy(dora = it) }
-                            Stepper("赤寶牌", sit.akadora) { sit = sit.copy(akadora = it) }
-                            Stepper("裏寶牌", sit.uradora, menzen && (sit.riichi || sit.doubleRiichi)) { sit = sit.copy(uradora = it) }
+                            Stepper(tr("寶牌", "ドラ"), sit.dora) { sit = sit.copy(dora = it) }
+                            Stepper(tr("赤寶牌", "赤ドラ"), sit.akadora) { sit = sit.copy(akadora = it) }
+                            Stepper(tr("裏寶牌", "裏ドラ"), sit.uradora, menzen && (sit.riichi || sit.doubleRiichi)) {
+                                sit = sit.copy(uradora = it)
+                            }
                         }
 
                         // ---- 判定結果 ----
@@ -257,7 +271,7 @@ fun HandEntryDialog(
                         Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp)) {
                                 Text(
-                                    summaryText(analysis, effSit, kiriage),
+                                    summaryText(analysis, effSit, kiriage, LocalLang.current),
                                     Modifier.weight(1f),
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
@@ -267,7 +281,7 @@ fun HandEntryDialog(
                                 Button(
                                     onClick = { (analysis as? Analysis.Agari)?.let { onApply(it.result, effSit) } },
                                     enabled = analysis is Analysis.Agari,
-                                ) { Text("套用") }
+                                ) { Text(tr("套用", "適用")) }
                             }
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -279,13 +293,13 @@ fun HandEntryDialog(
                                         selected = mode == t,
                                         onClick = { mode = if (mode == t) null else t },
                                         enabled = melds.size < 4,
-                                        label = { Text(t.label) },
+                                        label = { Text(t.label(LocalLang.current)) },
                                     )
                                 }
                             }
                             if (mode == MeldType.CHI) {
                                 Text(
-                                    "請點選順子中最小的那張牌",
+                                    tr("請點選順子中最小的那張牌", "順子の一番小さい牌を選んでください"),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.secondary,
                                     modifier = Modifier.padding(start = 8.dp, bottom = 4.dp),
@@ -353,20 +367,22 @@ private fun Stepper(label: String, value: Int, enabled: Boolean = true, onChange
     }
 }
 
-private fun summaryText(a: Analysis, sit: Situation, kiriage: Boolean): String = when (a) {
-    is Analysis.Incomplete -> if (a.diff > 0) "還差 ${a.diff} 張" else "多了 ${-a.diff} 張"
-    Analysis.NotAgari -> "未構成和了形"
-    is Analysis.NoYaku -> "無役"
+private fun summaryText(a: Analysis, sit: Situation, kiriage: Boolean, lang: AppLang): String = when (a) {
+    is Analysis.Incomplete ->
+        if (a.diff > 0) lang.t("還差 ${a.diff} 張", "あと ${a.diff} 枚") else lang.t("多了 ${-a.diff} 張", "${-a.diff} 枚多い")
+    Analysis.NotAgari -> lang.t("未構成和了形", "和了形ではありません")
+    is Analysis.NoYaku -> lang.t("無役", "役なし")
     is Analysis.Agari -> {
         val r = a.result
         val pay = Scoring.payment(r.han, r.fu, r.yakuman, sit.dealer, kiriage)
-        Scoring.handLabel(r.han, r.fu, r.yakuman, kiriage) + "　" +
-            if (sit.tsumo) Scoring.tsumoText(pay, sit.dealer) else "${pay.ron}"
+        Scoring.handLabel(r.han, r.fu, r.yakuman, kiriage, lang) + "　" +
+            if (sit.tsumo) Scoring.tsumoText(pay, sit.dealer, lang) else "${pay.ron}"
     }
 }
 
 @Composable
 private fun AnalysisDetail(a: Analysis) {
+    val lang = LocalLang.current
     val result = when (a) {
         is Analysis.Agari -> a.result
         is Analysis.NoYaku -> a.result
@@ -375,36 +391,44 @@ private fun AnalysisDetail(a: Analysis) {
     if (result == null) {
         Text(
             when (a) {
-                is Analysis.Incomplete -> if (a.diff > 0) "還差 ${a.diff} 張牌" else "多了 ${-a.diff} 張牌"
-                else -> "這手牌無法組成 4 面子 1 雀頭、七對子或國士無雙"
+                is Analysis.Incomplete ->
+                    if (a.diff > 0) tr("還差 ${a.diff} 張牌", "あと ${a.diff} 枚必要です")
+                    else tr("多了 ${-a.diff} 張牌", "${-a.diff} 枚多すぎます")
+                else -> tr(
+                    "這手牌無法組成 4 面子 1 雀頭、七對子或國士無雙",
+                    "4面子1雀頭・七対子・国士無双のいずれにもなりません",
+                )
             },
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         return
     }
     if (a is Analysis.NoYaku) {
-        Text("無役：沒有任何役（寶牌不算役），不能和了", color = MaterialTheme.colorScheme.error)
+        Text(
+            tr("無役：沒有任何役（寶牌不算役），不能和了", "役なし：役がないため和了できません（ドラは役ではありません）"),
+            color = MaterialTheme.colorScheme.error,
+        )
     }
     result.yaku.forEach { y ->
         DetailRow(
-            y.name,
+            y.label(lang),
             when {
-                y.yakuman == 1 -> "役滿"
-                y.yakuman > 1 -> "${y.yakuman}倍役滿"
+                y.yakuman == 1 -> tr("役滿", "役満")
+                y.yakuman > 1 -> tr("${y.yakuman}倍役滿", "${y.yakuman}倍役満")
                 else -> "${y.han}翻"
             },
         )
     }
     if (result.yakuman == 0 && result.fuItems.isNotEmpty()) {
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
-        result.fuItems.forEach { DetailRow(it.name, "${it.fu}符") }
-        DetailRow("合計（十位進位）", "${result.fu}符", bold = true)
+        result.fuItems.forEach { DetailRow(it.label(lang), "${it.fu}符") }
+        DetailRow(tr("合計（十位進位）", "合計（切り上げ）"), "${result.fu}符", bold = true)
     }
     if (a is Analysis.Agari) {
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
         DetailRow(
             "合計",
-            if (result.yakuman > 0) Scoring.handLabel(13, 0, result.yakuman) else "${result.han}翻 ${result.fu}符",
+            if (result.yakuman > 0) Scoring.handLabel(13, 0, result.yakuman, false, lang) else "${result.han}翻 ${result.fu}符",
             bold = true,
         )
     }

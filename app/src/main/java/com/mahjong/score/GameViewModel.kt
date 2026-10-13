@@ -9,6 +9,8 @@ import androidx.lifecycle.viewModelScope
 import com.mahjong.score.data.ReleaseInfo
 import com.mahjong.score.data.Storage
 import com.mahjong.score.data.UpdateChecker
+import com.mahjong.score.model.AppLang
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -16,6 +18,8 @@ import com.mahjong.score.model.Game
 import com.mahjong.score.model.GameLogic
 import com.mahjong.score.model.Rules
 import com.mahjong.score.model.Win
+
+enum class UpdateResult { UP_TO_DATE, FAILED }
 
 class GameViewModel(app: Application) : AndroidViewModel(app) {
     private val storage = Storage(app)
@@ -28,11 +32,22 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     /** 有可下載的新版本時不為 null（顯示更新對話框） */
     var availableUpdate by mutableStateOf<ReleaseInfo?>(null)
         private set
-    /** 手動檢查更新的結果訊息 */
-    var updateMessage by mutableStateOf<String?>(null)
+    /** 手動檢查更新的結果（已是最新版／無法取得） */
+    var updateResult by mutableStateOf<UpdateResult?>(null)
         private set
     var checkingUpdate by mutableStateOf(false)
         private set
+
+    /** 介面語言；未設定時依系統語言（日文 → 日本語，其他 → 中文） */
+    var lang by mutableStateOf(
+        storage.lang ?: if (Locale.getDefault().language == "ja") AppLang.JA else AppLang.ZH
+    )
+        private set
+
+    fun changeLang(value: AppLang) {
+        lang = value
+        storage.lang = value
+    }
 
     init {
         checkUpdate(manual = false)
@@ -49,8 +64,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             when {
                 newer && (manual || latest!!.tag != storage.ignoredVersion) -> availableUpdate = latest
                 !manual -> Unit
-                latest == null -> updateMessage = "無法取得版本資訊，請確認網路連線"
-                else -> updateMessage = "目前已是最新版本（v${BuildConfig.VERSION_NAME}）"
+                latest == null -> updateResult = UpdateResult.FAILED
+                else -> updateResult = UpdateResult.UP_TO_DATE
             }
         }
     }
@@ -64,8 +79,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         availableUpdate = null
     }
 
-    fun clearUpdateMessage() {
-        updateMessage = null
+    fun clearUpdateResult() {
+        updateResult = null
     }
 
     private fun update(game: Game?) {

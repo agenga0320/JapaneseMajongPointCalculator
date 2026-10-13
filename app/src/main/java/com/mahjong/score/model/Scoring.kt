@@ -22,15 +22,15 @@ object Scoring {
         }
     }
 
-    fun limitName(han: Int, fu: Int, yakuman: Int = 0, kiriage: Boolean = false): String? {
-        if (yakuman >= 2) return "${yakuman}倍役滿"
-        if (yakuman == 1) return "役滿"
+    fun limitName(han: Int, fu: Int, yakuman: Int, kiriage: Boolean, lang: AppLang): String? {
+        if (yakuman >= 2) return lang.t("${yakuman}倍役滿", "${yakuman}倍役満")
+        if (yakuman == 1) return lang.t("役滿", "役満")
         return when (basePoints(han, fu, 0, kiriage)) {
-            8000 -> "累計役滿"
-            6000 -> "三倍滿"
-            4000 -> "倍滿"
-            3000 -> "跳滿"
-            2000 -> "滿貫"
+            8000 -> lang.t("累計役滿", "数え役満")
+            6000 -> lang.t("三倍滿", "三倍満")
+            4000 -> lang.t("倍滿", "倍満")
+            3000 -> lang.t("跳滿", "跳満")
+            2000 -> lang.t("滿貫", "満貫")
             else -> null
         }
     }
@@ -43,8 +43,8 @@ object Scoring {
         else Payment(up100(b * 4), up100(b * 2), up100(b))
     }
 
-    fun handLabel(han: Int, fu: Int, yakuman: Int, kiriage: Boolean = false): String {
-        val limit = limitName(han, fu, yakuman, kiriage)
+    fun handLabel(han: Int, fu: Int, yakuman: Int, kiriage: Boolean, lang: AppLang): String {
+        val limit = limitName(han, fu, yakuman, kiriage, lang)
         return when {
             yakuman > 0 -> limit!!
             han >= 5 -> "${han}翻 $limit"
@@ -54,6 +54,6 @@ object Scoring {
     }
 
     /** 自摸的表記：親「4000 all」、子「子支付/親支付」 */
-    fun tsumoText(p: Payment, dealer: Boolean) =
-        if (dealer) "${p.tsumoChild} all" else "${p.tsumoChild}/${p.tsumoDealer}"
+    fun tsumoText(p: Payment, dealer: Boolean, lang: AppLang) =
+        if (dealer) "${p.tsumoChild}" + lang.t(" all", "オール") else "${p.tsumoChild}/${p.tsumoDealer}"
 }

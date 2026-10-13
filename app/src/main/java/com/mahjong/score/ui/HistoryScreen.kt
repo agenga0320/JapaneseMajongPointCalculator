@@ -36,7 +36,7 @@ fun HistoryScreen(game: Game, onDelete: () -> Unit, onBack: () -> Unit) {
         topBar = {
             SimpleTopBar(dateText(game.startedAt), onBack) {
                 IconButton(onClick = { confirmDelete = true }) {
-                    Icon(Icons.Filled.Delete, contentDescription = "刪除")
+                    Icon(Icons.Filled.Delete, contentDescription = tr("刪除", "削除"))
                 }
             }
         },
@@ -49,28 +49,32 @@ fun HistoryScreen(game: Game, onDelete: () -> Unit, onBack: () -> Unit) {
             item {
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                     Column(Modifier.padding(16.dp)) {
-                        Text("最終結算", style = MaterialTheme.typography.titleMedium)
+                        Text(tr("最終結算", "最終結果"), style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "${r.startPoints}點持 ${r.returnPoints}點返　馬 " +
-                                (if (r.umaLarge == 0) "無" else "${r.umaSmall}-${r.umaLarge}"),
+                            tr(
+                                "${r.startPoints}點持 ${r.returnPoints}點返　馬 ",
+                                "${r.startPoints}点持ち ${r.returnPoints}点返し　ウマ ",
+                            ) + (if (r.umaLarge == 0) tr("無", "なし") else "${r.umaSmall}-${r.umaLarge}"),
                             style = MaterialTheme.typography.bodySmall,
                         )
                         StandingsTable(game)
                     }
                 }
             }
-            if (game.records.isNotEmpty()) item { SectionTitle("對局紀錄（${game.records.size}局）") }
-            items(game.records) { RecordItem(game.names, it) }
+            if (game.records.isNotEmpty()) {
+                item { SectionTitle(tr("對局紀錄（${game.records.size}局）", "対局記録（${game.records.size}局）")) }
+            }
+            items(game.records) { RecordItem(game, it) }
         }
     }
 
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text("刪除紀錄") },
-            text = { Text("確定要刪除這場半莊的紀錄嗎？") },
-            confirmButton = { TextButton(onClick = { confirmDelete = false; onDelete() }) { Text("刪除") } },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("取消") } },
+            title = { Text(tr("刪除紀錄", "記録を削除")) },
+            text = { Text(tr("確定要刪除這場半莊的紀錄嗎？", "この半荘の記録を削除しますか？")) },
+            confirmButton = { TextButton(onClick = { confirmDelete = false; onDelete() }) { Text(tr("刪除", "削除")) } },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(tr("取消", "キャンセル")) } },
         )
     }
 }

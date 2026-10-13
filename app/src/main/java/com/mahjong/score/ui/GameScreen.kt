@@ -44,7 +44,8 @@ fun GameScreen(
     var confirmEnd by remember { mutableStateOf(false) }
     var confirmUndo by remember { mutableStateOf(false) }
 
-    Scaffold(topBar = { SimpleTopBar(if (game.finished) "半莊結束" else game.roundTitle, onBack) }) { pad ->
+    val lang = LocalLang.current
+    Scaffold(topBar = { SimpleTopBar(if (game.finished) tr("半莊結束", "半荘終了") else game.roundTitle, onBack) }) { pad ->
         LazyColumn(
             Modifier.padding(pad).fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
@@ -52,7 +53,8 @@ fun GameScreen(
         ) {
             item {
                 Text(
-                    "供託 ${game.state.kyotaku} 本　已打 ${game.records.size} 局",
+                    "供託 ${game.state.kyotaku} 本　" +
+                        tr("已打 ${game.records.size} 局", "${game.records.size} 局終了"),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -63,10 +65,13 @@ fun GameScreen(
                 item {
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                         Column(Modifier.padding(16.dp)) {
-                            Text("最終結算", style = MaterialTheme.typography.titleMedium)
+                            Text(tr("最終結算", "最終結果"), style = MaterialTheme.typography.titleMedium)
                             if (game.state.kyotaku > 0) {
                                 Text(
-                                    "剩餘供託 ${game.state.kyotaku * 1000} 點歸第1名",
+                                    tr(
+                                        "剩餘供託 ${game.state.kyotaku * 1000} 點歸第1名",
+                                        "残り供託 ${game.state.kyotaku * 1000} 点はトップへ",
+                                    ),
                                     style = MaterialTheme.typography.bodySmall,
                                 )
                             }
@@ -74,11 +79,16 @@ fun GameScreen(
                             Button(
                                 onClick = { vm.archive()?.let(onArchived) },
                                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                            ) { Text("保存紀錄") }
+                            ) { Text(tr("保存紀錄", "記録を保存")) }
                             OutlinedButton(
                                 onClick = { vm.undo() },
                                 modifier = Modifier.fillMaxWidth(),
-                            ) { Text(if (game.manualEnd) "取消結束，繼續對局" else "復原上一局") }
+                            ) {
+                                Text(
+                                    if (game.manualEnd) tr("取消結束，繼續對局", "終了を取り消して続ける")
+                                    else tr("復原上一局", "1局戻す")
+                                )
+                            }
                         }
                     }
                 }
@@ -95,36 +105,36 @@ fun GameScreen(
                             onClick = { confirmUndo = true },
                             enabled = game.records.isNotEmpty(),
                             modifier = Modifier.weight(1f),
-                        ) { Text("復原上一局") }
+                        ) { Text(tr("復原上一局", "1局戻す")) }
                         OutlinedButton(onClick = { confirmEnd = true }, modifier = Modifier.weight(1f)) {
-                            Text("結束半莊")
+                            Text(tr("結束半莊", "半荘を終了"))
                         }
                     }
                 }
             }
 
-            if (game.records.isNotEmpty()) item { SectionTitle("對局紀錄") }
-            items(game.records.reversed()) { RecordItem(game.names, it) }
+            if (game.records.isNotEmpty()) item { SectionTitle(tr("對局紀錄", "対局記録")) }
+            items(game.records.reversed()) { RecordItem(game, it) }
         }
     }
 
     if (confirmEnd) {
         AlertDialog(
             onDismissRequest = { confirmEnd = false },
-            title = { Text("結束半莊") },
-            text = { Text("以目前點數結算本場半莊？") },
-            confirmButton = { TextButton(onClick = { confirmEnd = false; vm.endManually() }) { Text("結束") } },
-            dismissButton = { TextButton(onClick = { confirmEnd = false }) { Text("取消") } },
+            title = { Text(tr("結束半莊", "半荘を終了")) },
+            text = { Text(tr("以目前點數結算本場半莊？", "現在の点数で半荘を精算しますか？")) },
+            confirmButton = { TextButton(onClick = { confirmEnd = false; vm.endManually() }) { Text(tr("結束", "終了")) } },
+            dismissButton = { TextButton(onClick = { confirmEnd = false }) { Text(tr("取消", "キャンセル")) } },
         )
     }
     if (confirmUndo) {
         val last = game.records.lastOrNull()
         AlertDialog(
             onDismissRequest = { confirmUndo = false },
-            title = { Text("復原上一局") },
-            text = { Text(last?.let { "${it.title}\n${it.detail}" } ?: "") },
-            confirmButton = { TextButton(onClick = { confirmUndo = false; vm.undo() }) { Text("復原") } },
-            dismissButton = { TextButton(onClick = { confirmUndo = false }) { Text("取消") } },
+            title = { Text(tr("復原上一局", "1局戻す")) },
+            text = { Text(last?.let { "${it.title}\n${GameLogic.describe(it, game.names, game.rules, lang)}" } ?: "") },
+            confirmButton = { TextButton(onClick = { confirmUndo = false; vm.undo() }) { Text(tr("復原", "戻す")) } },
+            dismissButton = { TextButton(onClick = { confirmUndo = false }) { Text(tr("取消", "キャンセル")) } },
         )
     }
 }

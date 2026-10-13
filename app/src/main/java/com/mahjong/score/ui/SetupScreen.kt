@@ -46,11 +46,11 @@ fun SetupScreen(vm: GameViewModel, onStart: () -> Unit, onBack: () -> Unit) {
     var tobi by remember { mutableStateOf(r0.tobi) }
     var westEntry by remember { mutableStateOf(r0.westEntry) }
 
-    Scaffold(topBar = { SimpleTopBar("新半莊", onBack) }) { pad ->
+    Scaffold(topBar = { SimpleTopBar(tr("新半莊", "新しい半荘"), onBack) }) { pad ->
         Column(
             Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
         ) {
-            SectionTitle("玩家（依起家順）")
+            SectionTitle(tr("玩家（依起家順）", "プレイヤー（起家順）"))
             WINDS.forEachIndexed { i, w ->
                 OutlinedTextField(
                     value = names[i],
@@ -61,12 +61,12 @@ fun SetupScreen(vm: GameViewModel, onStart: () -> Unit, onBack: () -> Unit) {
                 )
             }
 
-            SectionTitle("規則")
+            SectionTitle(tr("規則", "ルール"))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = start,
                     onValueChange = { start = it.filter(Char::isDigit) },
-                    label = { Text("配給原點") },
+                    label = { Text(tr("配給原點", "配給原点")) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f),
@@ -74,25 +74,31 @@ fun SetupScreen(vm: GameViewModel, onStart: () -> Unit, onBack: () -> Unit) {
                 OutlinedTextField(
                     value = ret,
                     onValueChange = { ret = it.filter(Char::isDigit) },
-                    label = { Text("返點") },
+                    label = { Text(tr("返點", "返し")) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f),
                 )
             }
-            Text("馬（順位點）", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 12.dp))
+            Text(tr("馬（順位點）", "ウマ（順位点）"), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 12.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 UMA_OPTIONS.forEach { opt ->
                     FilterChip(
                         selected = uma == opt,
                         onClick = { uma = opt },
-                        label = { Text(if (opt.second == 0) "無" else "${opt.first}-${opt.second}") },
+                        label = { Text(if (opt.second == 0) tr("無", "なし") else "${opt.first}-${opt.second}") },
                     )
                 }
             }
-            SwitchRow("切上滿貫（4翻30符・3翻60符 算滿貫）", kiriage) { kiriage = it }
-            SwitchRow("擊飛（點數低於 0 即結束）", tobi) { tobi = it }
-            SwitchRow("西入（南4局結束時無人達返點則進入西場，西場有人達返點即結束）", westEntry) { westEntry = it }
+            SwitchRow(tr("切上滿貫（4翻30符・3翻60符 算滿貫）", "切り上げ満貫（4翻30符・3翻60符を満貫）"), kiriage) { kiriage = it }
+            SwitchRow(tr("擊飛（點數低於 0 即結束）", "飛び（0点未満で終了）"), tobi) { tobi = it }
+            SwitchRow(
+                tr(
+                    "西入（南4局結束時無人達返點則進入西場，西場有人達返點即結束）",
+                    "西入（南4局終了時に誰も返し点に届かなければ西場へ。西場は誰かが返し点に達した時点で終了）",
+                ),
+                westEntry,
+            ) { westEntry = it }
 
             Button(
                 onClick = {

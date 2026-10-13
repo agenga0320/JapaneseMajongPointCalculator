@@ -1,10 +1,14 @@
 package com.mahjong.score.data
 
 import android.content.Context
+import com.mahjong.score.model.AppLang
 import com.mahjong.score.model.Game
 import com.mahjong.score.model.HandRecord
 import com.mahjong.score.model.RoundState
 import com.mahjong.score.model.Rules
+import com.mahjong.score.model.Win
+import com.mahjong.score.model.Yaku
+import com.mahjong.score.model.YakuItem
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -40,10 +44,16 @@ class Storage(context: Context) {
         get() = prefs.getString(KEY_IGNORED_VERSION, null)
         set(value) = prefs.edit().putString(KEY_IGNORED_VERSION, value).apply()
 
+    /** 介面語言；未設定時為 null */
+    var lang: AppLang?
+        get() = AppLang.fromCode(prefs.getString(KEY_LANG, null))
+        set(value) = prefs.edit().putString(KEY_LANG, value?.code).apply()
+
     private companion object {
         const val KEY_CURRENT = "current"
         const val KEY_HISTORY = "history"
         const val KEY_IGNORED_VERSION = "ignoredVersion"
+        const val KEY_LANG = "lang"
     }
 }
 
@@ -75,16 +85,7 @@ private fun gameToJson(g: Game) = JSONObject().apply {
         put("westEntry", g.rules.westEntry)
     })
     put("state", stateToJson(g.state))
-    put("records", JSONArray().apply {
-        g.records.forEach { r ->
-            put(JSONObject().apply {
-                put("before", stateToJson(r.before))
-                put("title", r.title)
-                put("detail", r.detail)
-                put("deltas", JSONArray(r.deltas))
-            })
-        }
-    })
+    put("records", JSONArray().apply { g.records.forEach { put(recordToJson(it)) } })
     put("finished", g.finished)
     put("manualEnd", g.manualEnd)
 }
@@ -106,16 +107,71 @@ private fun gameFromJson(o: JSONObject): Game {
             westEntry = r.optBoolean("westEntry", false),
         ),
         state = stateFromJson(o.getJSONObject("state")),
-        records = List(recs.length()) { i ->
-            val x = recs.getJSONObject(i)
-            HandRecord(
-                stateFromJson(x.getJSONObject("before")),
-                x.getString("title"),
-                x.getString("detail"),
-                x.getJSONArray("deltas").ints(),
-            )
-        },
+        records = List(recs.length()) { i -> recordFromJson(recs.getJSONObject(i)) },
         finished = o.optBoolean("finished", false),
         manualEnd = o.optBoolean("manualEnd", false),
+    )
+}
+
+private fun recordToJson(r: HandRecord) = JSONObject().apply {
+    put("before", stateToJson(r.before))
+    put("deltas", JSONArray(r.deltas))
+    put("wins", JSONArray().apply {
+        r.wins.forEach { w ->
+            put(JSONObject().apply {
+                put("winner", w.winner)
+                put("han", w.han)
+                put("fu", w.fu)
+                put("yakuman", w.yakuman)
+                put("yaku", JSONArray().apply {
+                    w.yaku.forEach { y ->
+                        put(JSONObject().apply {
+                            put("k", y.yaku.name)
+                            put("han", y.han)
+                            put("ym", y.yakuman)
+                            put("tile", y.tile)
+                        })
+                    }
+                })
+            })
+        }
+    })
+    r.loser?.let { put("loser", it) }
+    put("tenpai", JSONArray(r.tenpai.toList()))
+    put("riichi", JSONArray(r.riichi.toList()))
+    put("abortive", r.abortive)
+    r.legacyDetail?.let { put("detail", it) }
+}
+
+private fun recordFromJson(x: JSONObject): HandRecord {
+    val before = stateFromJson(x.getJSONObject("before"))
+    val deltas = x.getJSONArray("deltas").ints()
+    // v1.0.0 的紀錄只有文字說明
+    if (!x.has("wins")) return HandRecord(before, deltas, legacyDetail = x.optString("detail", ""))
+    val wins = x.getJSONArray("wins").let { a ->
+        List(a.length()) { i ->
+            val w = a.getJSONObject(i)
+            val ys = w.optJSONArray("yaku") ?: JSONArray()
+            Win(
+                winner = w.getInt("winner"),
+                han = w.getInt("han"),
+                fu = w.getInt("fu"),
+                yakuman = w.getInt("yakuman"),
+                yaku = List(ys.length()) { j -> ys.getJSONObject(j) }.mapNotNull { y ->
+                    val key = runCatching { Yaku.valueOf(y.getString("k")) }.getOrNull() ?: return@mapNotNull null
+                    YakuItem(key, y.getInt("han"), y.optInt("ym", 0), y.optInt("tile", -1))
+                },
+            )
+        }
+    }
+    return HandRecord(
+        before = before,
+        deltas = deltas,
+        wins = wins,
+        loser = if (x.has("loser")) x.getInt("loser") else null,
+        tenpai = x.getJSONArray("tenpai").ints().toSet(),
+        riichi = x.getJSONArray("riichi").ints().toSet(),
+        abortive = x.optBoolean("abortive", false),
+        legacyDetail = if (x.has("detail")) x.getString("detail") else null,
     )
 }

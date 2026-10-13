@@ -39,7 +39,8 @@ fun WinScreen(vm: GameViewModel, onDone: () -> Unit, onBack: () -> Unit) {
     var riichi by remember { mutableStateOf(setOf<Int>()) }
     var entryFor by remember { mutableStateOf<Int?>(null) }
 
-    val wins = hands.map { (p, h) -> Win(p, h.han, h.fu, h.yakuman, h.note) }
+    val lang = LocalLang.current
+    val wins = hands.map { (p, h) -> Win(p, h.han, h.fu, h.yakuman, h.yaku) }
     val payer = if (tsumo) null else loser
     val valid = wins.isNotEmpty() && (tsumo || loser != null)
     val deltas = if (valid) GameLogic.winDeltas(game, wins, payer, riichi).toList() else null
@@ -48,9 +49,9 @@ fun WinScreen(vm: GameViewModel, onDone: () -> Unit, onBack: () -> Unit) {
         Column(
             Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
         ) {
-            SectionTitle("和了方式")
+            SectionTitle(tr("和了方式", "和了方法"))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = !tsumo, onClick = { tsumo = false }, label = { Text("榮和") })
+                FilterChip(selected = !tsumo, onClick = { tsumo = false }, label = { Text(tr("榮和", "ロン")) })
                 FilterChip(
                     selected = tsumo,
                     onClick = {
@@ -58,7 +59,7 @@ fun WinScreen(vm: GameViewModel, onDone: () -> Unit, onBack: () -> Unit) {
                         loser = null
                         if (hands.size > 1) hands = hands.entries.take(1).associate { it.toPair() }
                     },
-                    label = { Text("自摸") },
+                    label = { Text(tr("自摸", "ツモ")) },
                 )
             }
 
@@ -74,7 +75,7 @@ fun WinScreen(vm: GameViewModel, onDone: () -> Unit, onBack: () -> Unit) {
                 )
             }
 
-            SectionTitle(if (tsumo) "和了者" else "和了者（雙響・三響可複選）")
+            SectionTitle(if (tsumo) "和了者" else tr("和了者（雙響・三響可複選）", "和了者（ダブロン・トリロン可）"))
             PlayerChips(
                 names,
                 selected = { it in hands },
@@ -96,26 +97,27 @@ fun WinScreen(vm: GameViewModel, onDone: () -> Unit, onBack: () -> Unit) {
                         OutlinedButton(
                             onClick = { entryFor = p },
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                        ) { Text("輸入手牌，自動判定役・符") }
-                        if (h.note.isNotEmpty()) {
+                        ) { Text(tr("輸入手牌，自動判定役・符", "手牌を入力して役・符を自動判定")) }
+                        if (h.yaku.isNotEmpty()) {
                             Text(
-                                h.note,
+                                yakuText(h.yaku, lang),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 4.dp),
                             )
                         }
                         Text(
-                            "或直接選翻符",
+                            tr("或直接選翻符", "または翻・符を直接選択"),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 8.dp),
                         )
-                        HanFuPicker(h) { hands = hands + (p to it.copy(note = "")) }
+                        HanFuPicker(h) { hands = hands + (p to it.copy(yaku = emptyList())) }
                         val pay = Scoring.payment(h.han, h.fu, h.yakuman, isDealer, game.rules.kiriage)
                         Text(
-                            Scoring.handLabel(h.han, h.fu, h.yakuman, game.rules.kiriage) + "　" +
-                                if (tsumo) "自摸 ${Scoring.tsumoText(pay, isDealer)}" else "榮和 ${pay.ron}",
+                            Scoring.handLabel(h.han, h.fu, h.yakuman, game.rules.kiriage, lang) + "　" +
+                                if (tsumo) tr("自摸", "ツモ") + " ${Scoring.tsumoText(pay, isDealer, lang)}"
+                                else tr("榮和", "ロン") + " ${pay.ron}",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
@@ -125,7 +127,9 @@ fun WinScreen(vm: GameViewModel, onDone: () -> Unit, onBack: () -> Unit) {
                 }
             }
 
-            SectionTitle("本局立直者（場上供託 ${game.state.kyotaku} 本）")
+            SectionTitle(
+                tr("本局立直者（場上供託 ${game.state.kyotaku} 本）", "この局のリーチ者（供託 ${game.state.kyotaku} 本）")
+            )
             PlayerChips(
                 names,
                 selected = { it in riichi },
@@ -133,7 +137,7 @@ fun WinScreen(vm: GameViewModel, onDone: () -> Unit, onBack: () -> Unit) {
             )
 
             if (deltas != null) {
-                SectionTitle("點數變動")
+                SectionTitle(tr("點數變動", "点数移動"))
                 DeltaRow(names, deltas)
                 Text(
                     names.indices.joinToString("　") { "${names[it]} ${game.state.scores[it] + deltas[it]}" },

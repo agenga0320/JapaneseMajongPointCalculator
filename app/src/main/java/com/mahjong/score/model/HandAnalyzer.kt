@@ -22,7 +22,11 @@ object Tiles {
     fun name(t: Int) = rankText(t) + suitText(t)
 }
 
-enum class MeldType(val label: String) { CHI("吃"), PON("碰"), MINKAN("明槓"), ANKAN("暗槓") }
+enum class MeldType(private val zh: String, private val ja: String) {
+    CHI("吃", "チー"), PON("碰", "ポン"), MINKAN("明槓", "明槓"), ANKAN("暗槓", "暗槓");
+
+    fun label(lang: AppLang) = lang.t(zh, ja)
+}
 
 /** 副露。CHI 的 tile 為順子最小的牌 */
 data class Meld(val type: MeldType, val tile: Int) {
@@ -55,8 +59,84 @@ data class Situation(
     val dealer: Boolean get() = seatWind == 0
 }
 
-data class YakuItem(val name: String, val han: Int, val yakuman: Int = 0, val isDora: Boolean = false)
-data class FuItem(val name: String, val fu: Int)
+enum class Yaku(private val zh: String, private val ja: String) {
+    RIICHI("立直", "立直"),
+    DOUBLE_RIICHI("兩立直", "ダブル立直"),
+    IPPATSU("一發", "一発"),
+    MENZEN_TSUMO("門前清自摸和", "門前清自摸和"),
+    PINFU("平和", "平和"),
+    TANYAO("斷么九", "断么九"),
+    IIPEIKOU("一盃口", "一盃口"),
+    RYANPEIKOU("二盃口", "二盃口"),
+    HAKU("役牌 白", "役牌 白"),
+    HATSU("役牌 發", "役牌 發"),
+    CHUN("役牌 中", "役牌 中"),
+    ROUND_WIND("場風", "場風"),
+    SEAT_WIND("自風", "自風"),
+    SANSHOKU("三色同順", "三色同順"),
+    ITTSU("一氣通貫", "一気通貫"),
+    CHANTA("混全帶么九", "混全帯么九"),
+    JUNCHAN("純全帶么九", "純全帯么九"),
+    CHIITOITSU("七對子", "七対子"),
+    TOITOI("對對和", "対々和"),
+    SANANKOU("三暗刻", "三暗刻"),
+    SANSHOKU_DOUKOU("三色同刻", "三色同刻"),
+    SANKANTSU("三槓子", "三槓子"),
+    SHOUSANGEN("小三元", "小三元"),
+    HONROUTOU("混老頭", "混老頭"),
+    HONITSU("混一色", "混一色"),
+    CHINITSU("清一色", "清一色"),
+    HAITEI("海底摸月", "海底摸月"),
+    HOUTEI("河底撈魚", "河底撈魚"),
+    RINSHAN("嶺上開花", "嶺上開花"),
+    CHANKAN("搶槓", "搶槓"),
+    DORA("寶牌", "ドラ"),
+    AKADORA("赤寶牌", "赤ドラ"),
+    URADORA("裏寶牌", "裏ドラ"),
+    KOKUSHI("國士無雙", "国士無双"),
+    SUUANKOU("四暗刻", "四暗刻"),
+    DAISANGEN("大三元", "大三元"),
+    SHOUSUUSHII("小四喜", "小四喜"),
+    DAISUUSHII("大四喜", "大四喜"),
+    TSUUIISOU("字一色", "字一色"),
+    RYUUIISOU("綠一色", "緑一色"),
+    CHINROUTOU("清老頭", "清老頭"),
+    SUUKANTSU("四槓子", "四槓子"),
+    CHUUREN("九蓮寶燈", "九蓮宝燈"),
+    TENHOU("天和", "天和"),
+    CHIIHOU("地和", "地和");
+
+    fun label(lang: AppLang) = lang.t(zh, ja)
+}
+
+/** tile >= 0 時在名稱後附上牌名（場風 東 等） */
+data class YakuItem(val yaku: Yaku, val han: Int, val yakuman: Int = 0, val tile: Int = -1) {
+    val isDora: Boolean get() = yaku == Yaku.DORA || yaku == Yaku.AKADORA || yaku == Yaku.URADORA
+    fun label(lang: AppLang) = yaku.label(lang) + if (tile >= 0) " ${Tiles.name(tile)}" else ""
+}
+
+enum class FuKind(private val zh: String, private val ja: String) {
+    BASE("副底", "副底"),
+    MENZEN_RON("門前榮和", "門前ロン"),
+    TSUMO("自摸", "ツモ"),
+    PINFU_TSUMO("平和自摸", "平和ツモ"),
+    MINKOU("明刻", "明刻"),
+    ANKOU("暗刻", "暗刻"),
+    MINKAN("明槓", "明槓"),
+    ANKAN("暗槓", "暗槓"),
+    PAIR("雀頭", "雀頭"),
+    KANCHAN("嵌張待", "嵌張待ち"),
+    PENCHAN("邊張待", "辺張待ち"),
+    TANKI("單騎待", "単騎待ち"),
+    OPEN_PINFU("副露平和形", "喰い平和形"),
+    CHIITOITSU("七對子", "七対子");
+
+    fun label(lang: AppLang) = lang.t(zh, ja)
+}
+
+data class FuItem(val kind: FuKind, val fu: Int, val tile: Int = -1) {
+    fun label(lang: AppLang) = kind.label(lang) + if (tile >= 0) " ${Tiles.name(tile)}" else ""
+}
 
 data class HandResult(
     val yaku: List<YakuItem>,
@@ -80,8 +160,8 @@ sealed interface Analysis {
 
 object HandAnalyzer {
     private enum class Kind { SEQ, TRIP }
-    private enum class Wait(val label: String?) {
-        RYANMEN(null), SHANPON(null), KANCHAN("嵌張待"), PENCHAN("邊張待"), TANKI("單騎待")
+    private enum class Wait(val fu: FuKind?) {
+        RYANMEN(null), SHANPON(null), KANCHAN(FuKind.KANCHAN), PENCHAN(FuKind.PENCHAN), TANKI(FuKind.TANKI)
     }
 
     private data class Block(val kind: Kind, val tile: Int, val open: Boolean = false, val kan: Boolean = false)
@@ -99,7 +179,7 @@ object HandAnalyzer {
 
         // 國士無雙
         if (melds.isEmpty() && Tiles.YAOCHU.all { counts[it] >= 1 } && concealed.all { Tiles.isYaochu(it) }) {
-            candidates += yakumanResult(listOf(YakuItem("國士無雙", 0, 1)) + tenhou(sit, menzen))
+            candidates += yakumanResult(listOf(YakuItem(Yaku.KOKUSHI, 0, 1)) + tenhou(sit, menzen))
         }
         // 七對子
         if (melds.isEmpty() && counts.count { it == 2 } == 7) {
@@ -182,7 +262,8 @@ object HandAnalyzer {
     // ---- 役 ----
 
     private fun tenhou(sit: Situation, menzen: Boolean): List<YakuItem> =
-        if (sit.tenhou && sit.tsumo && menzen) listOf(YakuItem(if (sit.dealer) "天和" else "地和", 0, 1)) else emptyList()
+        if (sit.tenhou && sit.tsumo && menzen) listOf(YakuItem(if (sit.dealer) Yaku.TENHOU else Yaku.CHIIHOU, 0, 1))
+        else emptyList()
 
     private fun yakumanResult(ym: List<YakuItem>) =
         HandResult(ym, emptyList(), 0, 0, ym.sumOf { it.yakuman }, 0)
@@ -191,26 +272,26 @@ object HandAnalyzer {
     private fun situationYaku(sit: Situation, menzen: Boolean): List<YakuItem> {
         val y = mutableListOf<YakuItem>()
         if (menzen) {
-            if (sit.doubleRiichi) y += YakuItem("兩立直", 2)
-            else if (sit.riichi) y += YakuItem("立直", 1)
-            if (sit.ippatsu && (sit.riichi || sit.doubleRiichi)) y += YakuItem("一發", 1)
-            if (sit.tsumo) y += YakuItem("門前清自摸和", 1)
+            if (sit.doubleRiichi) y += YakuItem(Yaku.DOUBLE_RIICHI, 2)
+            else if (sit.riichi) y += YakuItem(Yaku.RIICHI, 1)
+            if (sit.ippatsu && (sit.riichi || sit.doubleRiichi)) y += YakuItem(Yaku.IPPATSU, 1)
+            if (sit.tsumo) y += YakuItem(Yaku.MENZEN_TSUMO, 1)
         }
-        if (sit.lastTile) y += YakuItem(if (sit.tsumo) "海底摸月" else "河底撈魚", 1)
-        if (sit.rinshan && sit.tsumo) y += YakuItem("嶺上開花", 1)
-        if (sit.chankan && !sit.tsumo) y += YakuItem("搶槓", 1)
+        if (sit.lastTile) y += YakuItem(if (sit.tsumo) Yaku.HAITEI else Yaku.HOUTEI, 1)
+        if (sit.rinshan && sit.tsumo) y += YakuItem(Yaku.RINSHAN, 1)
+        if (sit.chankan && !sit.tsumo) y += YakuItem(Yaku.CHANKAN, 1)
         return y
     }
 
     /** 只看牌種的役（斷么九、混老頭、混一色、清一色） */
     private fun tileYaku(all: List<Int>, menzen: Boolean): List<YakuItem> {
         val y = mutableListOf<YakuItem>()
-        if (all.none { Tiles.isYaochu(it) }) y += YakuItem("斷么九", 1)
-        if (all.all { Tiles.isYaochu(it) }) y += YakuItem("混老頭", 2)
+        if (all.none { Tiles.isYaochu(it) }) y += YakuItem(Yaku.TANYAO, 1)
+        if (all.all { Tiles.isYaochu(it) }) y += YakuItem(Yaku.HONROUTOU, 2)
         val suits = all.filterNot { Tiles.isHonor(it) }.map { it / 9 }.toSet()
         if (suits.size == 1) {
-            y += if (all.any { Tiles.isHonor(it) }) YakuItem("混一色", if (menzen) 3 else 2)
-            else YakuItem("清一色", if (menzen) 6 else 5)
+            y += if (all.any { Tiles.isHonor(it) }) YakuItem(Yaku.HONITSU, if (menzen) 3 else 2)
+            else YakuItem(Yaku.CHINITSU, if (menzen) 6 else 5)
         }
         return y
     }
@@ -219,20 +300,20 @@ object HandAnalyzer {
         val yakuHan = yaku.sumOf { it.han }
         if (yakuHan == 0) return yaku to 0
         val list = yaku.toMutableList()
-        if (sit.dora > 0) list += YakuItem("寶牌", sit.dora, isDora = true)
-        if (sit.akadora > 0) list += YakuItem("赤寶牌", sit.akadora, isDora = true)
-        if (sit.uradora > 0 && (sit.riichi || sit.doubleRiichi)) list += YakuItem("裏寶牌", sit.uradora, isDora = true)
+        if (sit.dora > 0) list += YakuItem(Yaku.DORA, sit.dora)
+        if (sit.akadora > 0) list += YakuItem(Yaku.AKADORA, sit.akadora)
+        if (sit.uradora > 0 && (sit.riichi || sit.doubleRiichi)) list += YakuItem(Yaku.URADORA, sit.uradora)
         return list to yakuHan
     }
 
     private fun chiitoitsu(all: List<Int>, sit: Situation): HandResult {
         if (all.all { Tiles.isHonor(it) }) {
-            return yakumanResult(listOf(YakuItem("字一色", 0, 1)) + tenhou(sit, true))
+            return yakumanResult(listOf(YakuItem(Yaku.TSUUIISOU, 0, 1)) + tenhou(sit, true))
         }
         tenhou(sit, true).takeIf { it.isNotEmpty() }?.let { return yakumanResult(it) }
-        val base = situationYaku(sit, true) + YakuItem("七對子", 2) + tileYaku(all, true)
+        val base = situationYaku(sit, true) + YakuItem(Yaku.CHIITOITSU, 2) + tileYaku(all, true)
         val (yaku, yakuHan) = withDora(base, sit)
-        return HandResult(yaku, listOf(FuItem("七對子", 25)), 25, yaku.sumOf { it.han }, 0, yakuHan)
+        return HandResult(yaku, listOf(FuItem(FuKind.CHIITOITSU, 25)), 25, yaku.sumOf { it.han }, 0, yakuHan)
     }
 
     private fun regular(
@@ -259,15 +340,15 @@ object HandAnalyzer {
 
         // 役滿
         val ym = tenhou(sit, menzen).toMutableList()
-        if (trips.size == 4 && ankou == 4) ym += YakuItem("四暗刻", 0, 1)
-        if (dragonTrips == 3) ym += YakuItem("大三元", 0, 1)
-        if (windTrips == 4) ym += YakuItem("大四喜", 0, 1)
-        else if (windTrips == 3 && Tiles.isWind(pair)) ym += YakuItem("小四喜", 0, 1)
-        if (all.all { Tiles.isHonor(it) }) ym += YakuItem("字一色", 0, 1)
-        if (all.all { Tiles.isGreen(it) }) ym += YakuItem("綠一色", 0, 1)
-        if (all.all { Tiles.isTerminal(it) }) ym += YakuItem("清老頭", 0, 1)
-        if (kans == 4) ym += YakuItem("四槓子", 0, 1)
-        if (meldBlocks.isEmpty() && isChuuren(counts)) ym += YakuItem("九蓮寶燈", 0, 1)
+        if (trips.size == 4 && ankou == 4) ym += YakuItem(Yaku.SUUANKOU, 0, 1)
+        if (dragonTrips == 3) ym += YakuItem(Yaku.DAISANGEN, 0, 1)
+        if (windTrips == 4) ym += YakuItem(Yaku.DAISUUSHII, 0, 1)
+        else if (windTrips == 3 && Tiles.isWind(pair)) ym += YakuItem(Yaku.SHOUSUUSHII, 0, 1)
+        if (all.all { Tiles.isHonor(it) }) ym += YakuItem(Yaku.TSUUIISOU, 0, 1)
+        if (all.all { Tiles.isGreen(it) }) ym += YakuItem(Yaku.RYUUIISOU, 0, 1)
+        if (all.all { Tiles.isTerminal(it) }) ym += YakuItem(Yaku.CHINROUTOU, 0, 1)
+        if (kans == 4) ym += YakuItem(Yaku.SUUKANTSU, 0, 1)
+        if (meldBlocks.isEmpty() && isChuuren(counts)) ym += YakuItem(Yaku.CHUUREN, 0, 1)
         if (ym.isNotEmpty()) return yakumanResult(ym)
 
         val roundWindTile = 27 + sit.roundWind
@@ -276,39 +357,39 @@ object HandAnalyzer {
         val pinfu = menzen && seqs.size == 4 && !yakuhaiPair && wait == Wait.RYANMEN
 
         val y = situationYaku(sit, menzen).toMutableList()
-        if (pinfu) y += YakuItem("平和", 1)
+        if (pinfu) y += YakuItem(Yaku.PINFU, 1)
         if (menzen) {
             val dup = seqs.groupingBy { it.tile }.eachCount().values.sumOf { it / 2 }
-            if (dup >= 2) y += YakuItem("二盃口", 3)
-            else if (dup == 1) y += YakuItem("一盃口", 1)
+            if (dup >= 2) y += YakuItem(Yaku.RYANPEIKOU, 3)
+            else if (dup == 1) y += YakuItem(Yaku.IIPEIKOU, 1)
         }
         for (b in trips) {
             when (b.tile) {
-                31 -> y += YakuItem("役牌 白", 1)
-                32 -> y += YakuItem("役牌 發", 1)
-                33 -> y += YakuItem("役牌 中", 1)
+                31 -> y += YakuItem(Yaku.HAKU, 1)
+                32 -> y += YakuItem(Yaku.HATSU, 1)
+                33 -> y += YakuItem(Yaku.CHUN, 1)
             }
-            if (b.tile == roundWindTile) y += YakuItem("場風 ${Tiles.name(b.tile)}", 1)
-            if (b.tile == seatWindTile) y += YakuItem("自風 ${Tiles.name(b.tile)}", 1)
+            if (b.tile == roundWindTile) y += YakuItem(Yaku.ROUND_WIND, 1, tile = b.tile)
+            if (b.tile == seatWindTile) y += YakuItem(Yaku.SEAT_WIND, 1, tile = b.tile)
         }
         if ((0..6).any { r -> (0..2).all { s -> seqs.any { it.tile == s * 9 + r } } }) {
-            y += YakuItem("三色同順", if (menzen) 2 else 1)
+            y += YakuItem(Yaku.SANSHOKU, if (menzen) 2 else 1)
         }
         if ((0..2).any { s -> listOf(0, 3, 6).all { r -> seqs.any { it.tile == s * 9 + r } } }) {
-            y += YakuItem("一氣通貫", if (menzen) 2 else 1)
+            y += YakuItem(Yaku.ITTSU, if (menzen) 2 else 1)
         }
         val allHaveYaochu = Tiles.isYaochu(pair) && blocks.all { b ->
             if (b.kind == Kind.SEQ) b.tile % 9 == 0 || b.tile % 9 == 6 else Tiles.isYaochu(b.tile)
         }
         if (allHaveYaochu && seqs.isNotEmpty()) {
-            y += if (all.none { Tiles.isHonor(it) }) YakuItem("純全帶么九", if (menzen) 3 else 2)
-            else YakuItem("混全帶么九", if (menzen) 2 else 1)
+            y += if (all.none { Tiles.isHonor(it) }) YakuItem(Yaku.JUNCHAN, if (menzen) 3 else 2)
+            else YakuItem(Yaku.CHANTA, if (menzen) 2 else 1)
         }
-        if (trips.size == 4) y += YakuItem("對對和", 2)
-        if (ankou == 3) y += YakuItem("三暗刻", 2)
-        if ((0..8).any { r -> (0..2).all { s -> trips.any { it.tile == s * 9 + r } } }) y += YakuItem("三色同刻", 2)
-        if (kans == 3) y += YakuItem("三槓子", 2)
-        if (dragonTrips == 2 && Tiles.isDragon(pair)) y += YakuItem("小三元", 2)
+        if (trips.size == 4) y += YakuItem(Yaku.TOITOI, 2)
+        if (ankou == 3) y += YakuItem(Yaku.SANANKOU, 2)
+        if ((0..8).any { r -> (0..2).all { s -> trips.any { it.tile == s * 9 + r } } }) y += YakuItem(Yaku.SANSHOKU_DOUKOU, 2)
+        if (kans == 3) y += YakuItem(Yaku.SANKANTSU, 2)
+        if (dragonTrips == 2 && Tiles.isDragon(pair)) y += YakuItem(Yaku.SHOUSANGEN, 2)
         y += tileYaku(all, menzen)
 
         val (yaku, yakuHan) = withDora(y, sit)
@@ -317,30 +398,35 @@ object HandAnalyzer {
         val fuItems = mutableListOf<FuItem>()
         val fu: Int
         if (pinfu && sit.tsumo) {
-            fuItems += FuItem("平和自摸", 20)
+            fuItems += FuItem(FuKind.PINFU_TSUMO, 20)
             fu = 20
         } else {
-            fuItems += FuItem("副底", 20)
-            if (menzen && !sit.tsumo) fuItems += FuItem("門前榮和", 10)
-            if (sit.tsumo && !pinfu) fuItems += FuItem("自摸", 2)
+            fuItems += FuItem(FuKind.BASE, 20)
+            if (menzen && !sit.tsumo) fuItems += FuItem(FuKind.MENZEN_RON, 10)
+            if (sit.tsumo && !pinfu) fuItems += FuItem(FuKind.TSUMO, 2)
             for (b in trips) {
                 var f = 2
                 if (Tiles.isYaochu(b.tile)) f *= 2
                 if (!b.open) f *= 2
                 if (b.kan) f *= 4
-                val kind = if (b.kan) (if (b.open) "明槓" else "暗槓") else (if (b.open) "明刻" else "暗刻")
-                fuItems += FuItem("$kind ${Tiles.name(b.tile)}", f)
+                val kind = when {
+                    b.kan && b.open -> FuKind.MINKAN
+                    b.kan -> FuKind.ANKAN
+                    b.open -> FuKind.MINKOU
+                    else -> FuKind.ANKOU
+                }
+                fuItems += FuItem(kind, f, b.tile)
             }
             var pairFu = 0
             if (Tiles.isDragon(pair)) pairFu += 2
             if (pair == roundWindTile) pairFu += 2
             if (pair == seatWindTile) pairFu += 2
-            if (pairFu > 0) fuItems += FuItem("雀頭 ${Tiles.name(pair)}", pairFu)
-            wait.label?.let { fuItems += FuItem(it, 2) }
+            if (pairFu > 0) fuItems += FuItem(FuKind.PAIR, pairFu, pair)
+            wait.fu?.let { fuItems += FuItem(it, 2) }
             val raw = fuItems.sumOf { it.fu }
             var rounded = (raw + 9) / 10 * 10
             if (rounded == 20 && !menzen) {
-                fuItems += FuItem("副露平和形", 10)
+                fuItems += FuItem(FuKind.OPEN_PINFU, 10)
                 rounded = 30
             }
             fu = rounded

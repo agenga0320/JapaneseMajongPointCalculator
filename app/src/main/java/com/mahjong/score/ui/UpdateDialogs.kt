@@ -16,19 +16,21 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import com.mahjong.score.BuildConfig
 import com.mahjong.score.GameViewModel
+import com.mahjong.score.UpdateResult
 
 /** 新版本提示，以及手動檢查更新的結果 */
 @Composable
 fun UpdateDialogs(vm: GameViewModel) {
     val uriHandler = LocalUriHandler.current
+    val version = "v${BuildConfig.VERSION_NAME}"
 
     vm.availableUpdate?.let { r ->
         AlertDialog(
             onDismissRequest = vm::dismissUpdate,
-            title = { Text("有新版本 ${r.tag}") },
+            title = { Text(tr("有新版本 ${r.tag}", "新しいバージョン ${r.tag} があります")) },
             text = {
                 Column(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
-                    Text("目前版本：v${BuildConfig.VERSION_NAME}")
+                    Text(tr("目前版本：$version", "現在のバージョン：$version"))
                     if (r.notes.isNotBlank()) {
                         Text(
                             r.notes.trim(),
@@ -42,23 +44,33 @@ fun UpdateDialogs(vm: GameViewModel) {
                 TextButton(onClick = {
                     runCatching { uriHandler.openUri(r.url) }
                     vm.dismissUpdate()
-                }) { Text("前往下載") }
+                }) { Text(tr("前往下載", "ダウンロード")) }
             },
             dismissButton = {
                 Row {
-                    TextButton(onClick = vm::ignoreUpdate) { Text("忽略此版本") }
-                    TextButton(onClick = vm::dismissUpdate) { Text("稍後") }
+                    TextButton(onClick = vm::ignoreUpdate) { Text(tr("忽略此版本", "このバージョンを無視")) }
+                    TextButton(onClick = vm::dismissUpdate) { Text(tr("稍後", "後で")) }
                 }
             },
         )
     }
 
-    vm.updateMessage?.let { msg ->
+    vm.updateResult?.let { result ->
         AlertDialog(
-            onDismissRequest = vm::clearUpdateMessage,
-            title = { Text("檢查更新") },
-            text = { Text(msg) },
-            confirmButton = { TextButton(onClick = vm::clearUpdateMessage) { Text("確定") } },
+            onDismissRequest = vm::clearUpdateResult,
+            title = { Text(tr("檢查更新", "更新を確認")) },
+            text = {
+                Text(
+                    when (result) {
+                        UpdateResult.UP_TO_DATE -> tr("目前已是最新版本（$version）", "最新バージョンです（$version）")
+                        UpdateResult.FAILED -> tr(
+                            "無法取得版本資訊，請確認網路連線",
+                            "バージョン情報を取得できませんでした。ネットワーク接続を確認してください",
+                        )
+                    }
+                )
+            },
+            confirmButton = { TextButton(onClick = vm::clearUpdateResult) { Text(tr("確定", "OK")) } },
         )
     }
 }

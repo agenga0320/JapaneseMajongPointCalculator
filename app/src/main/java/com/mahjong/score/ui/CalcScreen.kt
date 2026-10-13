@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.mahjong.score.model.AppLang
 import com.mahjong.score.model.Scoring
 import com.mahjong.score.model.Situation
 
@@ -36,8 +37,9 @@ fun CalcScreen(onBack: () -> Unit) {
     var input by remember { mutableStateOf(HandInput()) }
     var showEntry by remember { mutableStateOf(false) }
     val pay = Scoring.payment(input.han, input.fu, input.yakuman, dealer)
+    val lang = LocalLang.current
 
-    Scaffold(topBar = { SimpleTopBar("點數速查", onBack) }) { pad ->
+    Scaffold(topBar = { SimpleTopBar(tr("點數速查", "点数早見表"), onBack) }) { pad ->
         Column(
             Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
         ) {
@@ -48,25 +50,41 @@ fun CalcScreen(onBack: () -> Unit) {
             OutlinedButton(
                 onClick = { showEntry = true },
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            ) { Text("輸入手牌，自動判定役・符") }
-            HanFuPicker(input) { input = it.copy(note = "") }
+            ) { Text(tr("輸入手牌，自動判定役・符", "手牌を入力して役・符を自動判定")) }
+            HanFuPicker(input) { input = it.copy(yaku = emptyList()) }
 
             Card(
                 Modifier.fillMaxWidth().padding(top = 16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
             ) {
                 Column(Modifier.padding(16.dp)) {
-                    Text(Scoring.handLabel(input.han, input.fu, input.yakuman), style = MaterialTheme.typography.titleMedium)
-                    if (input.note.isNotEmpty()) Text(input.note, style = MaterialTheme.typography.bodySmall)
-                    Text("榮和　${pay.ron}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    Text("自摸　${Scoring.tsumoText(pay, dealer)}", style = MaterialTheme.typography.headlineSmall)
+                    Text(
+                        Scoring.handLabel(input.han, input.fu, input.yakuman, false, lang),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    if (input.yaku.isNotEmpty()) Text(yakuText(input.yaku, lang), style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        tr("榮和", "ロン") + "　${pay.ron}",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        tr("自摸", "ツモ") + "　${Scoring.tsumoText(pay, dealer, lang)}",
+                        style = MaterialTheme.typography.headlineSmall,
+                    )
                 }
             }
 
-            SectionTitle("${if (dealer) "親" else "子"}的點數表（榮和 / 自摸）")
+            SectionTitle(
+                if (dealer) tr("親的點數表（榮和 / 自摸）", "親の点数表（ロン / ツモ）")
+                else tr("子的點數表（榮和 / 自摸）", "子の点数表（ロン / ツモ）")
+            )
             FuHanTable(dealer)
             Text(
-                "5翻 滿貫・6〜7翻 跳滿・8〜10翻 倍滿・11〜12翻 三倍滿・13翻以上 累計役滿",
+                tr(
+                    "5翻 滿貫・6〜7翻 跳滿・8〜10翻 倍滿・11〜12翻 三倍滿・13翻以上 累計役滿",
+                    "5翻 満貫・6〜7翻 跳満・8〜10翻 倍満・11〜12翻 三倍満・13翻以上 数え役満",
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = 16.dp),
@@ -111,7 +129,8 @@ private fun FuHanTable(dealer: Boolean) {
                         // 20符沒有榮和（平和自摸限定）
                         Text(if (fu == 20) "—" else "${p.ron}", style = MaterialTheme.typography.bodyMedium)
                         Text(
-                            Scoring.tsumoText(p, dealer).replace(" all", "∀"),
+                            // 表格空間有限，「all」以 ∀ 表示
+                            Scoring.tsumoText(p, dealer, AppLang.ZH).replace(" all", "∀"),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

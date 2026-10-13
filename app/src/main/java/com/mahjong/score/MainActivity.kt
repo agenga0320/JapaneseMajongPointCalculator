@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -17,6 +18,7 @@ import com.mahjong.score.ui.DrawScreen
 import com.mahjong.score.ui.GameScreen
 import com.mahjong.score.ui.HistoryScreen
 import com.mahjong.score.ui.HomeScreen
+import com.mahjong.score.ui.LocalLang
 import com.mahjong.score.ui.MahjongTheme
 import com.mahjong.score.ui.SetupScreen
 import com.mahjong.score.ui.UpdateDialogs
@@ -42,6 +44,11 @@ private sealed interface Screen {
 
 @Composable
 private fun App(vm: GameViewModel = viewModel()) {
+    CompositionLocalProvider(LocalLang provides vm.lang) { AppContent(vm) }
+}
+
+@Composable
+private fun AppContent(vm: GameViewModel) {
     var stack by remember { mutableStateOf(listOf<Screen>(Screen.Home)) }
     fun push(s: Screen) { stack = stack + s }
     fun pop() { if (stack.size > 1) stack = stack.dropLast(1) }

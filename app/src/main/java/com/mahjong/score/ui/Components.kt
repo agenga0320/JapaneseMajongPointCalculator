@@ -20,20 +20,32 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.mahjong.score.model.AppLang
 import com.mahjong.score.model.Game
 import com.mahjong.score.model.GameLogic
+import com.mahjong.score.model.YakuItem
 import com.mahjong.score.model.HandRecord
 import com.mahjong.score.model.HandResult
 import com.mahjong.score.model.Scoring
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+/** 目前的介面語言（由 App 最上層提供） */
+val LocalLang = compositionLocalOf { AppLang.ZH }
+
+/** 依目前語言選擇中文或日文字串 */
+@Composable
+@ReadOnlyComposable
+fun tr(zh: String, ja: String): String = LocalLang.current.t(zh, ja)
 
 fun signed(v: Int) = if (v > 0) "+$v" else "$v"
 fun ptText(pt: Double) = String.format(Locale.US, "%+.1f", pt)
@@ -47,7 +59,7 @@ fun SimpleTopBar(title: String, onBack: (() -> Unit)?, actions: @Composable RowS
         navigationIcon = {
             if (onBack != null) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("返回", "戻る"))
                 }
             }
         },
@@ -86,24 +98,26 @@ fun PlayerChips(
 }
 
 /** 翻數選擇的編碼：1..13 = 翻數（13 = 累計役滿），101..103 = 役滿倍數 */
-data class HandInput(val hanCode: Int = 1, val fu: Int = 30, val note: String = "") {
+data class HandInput(val hanCode: Int = 1, val fu: Int = 30, val yaku: List<YakuItem> = emptyList()) {
     val han: Int get() = if (hanCode > 100) 13 else hanCode
     val yakuman: Int get() = if (hanCode > 100) hanCode - 100 else 0
     val fuMatters: Boolean get() = hanCode < 5
 
     companion object {
-        fun fromResult(r: HandResult): HandInput {
-            val note = r.yaku.joinToString("、") { if (it.isDora) "${it.name}${it.han}" else it.name }
-            return if (r.yakuman > 0) HandInput(100 + r.yakuman.coerceAtMost(3), 30, note)
-            else HandInput(r.han.coerceAtMost(13), r.fu, note)
-        }
+        fun fromResult(r: HandResult): HandInput =
+            if (r.yakuman > 0) HandInput(100 + r.yakuman.coerceAtMost(3), 30, r.yaku)
+            else HandInput(r.han.coerceAtMost(13), r.fu, r.yaku)
     }
 }
+
+/** 役一覽的文字（寶牌附上張數） */
+fun yakuText(yaku: List<YakuItem>, lang: AppLang) =
+    yaku.joinToString("、") { if (it.isDora) "${it.label(lang)}${it.han}" else it.label(lang) }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HanFuPicker(input: HandInput, onChange: (HandInput) -> Unit) {
-    Text("翻數", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+    Text(tr("翻數", "翻数"), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         (1..13).forEach { h ->
             FilterChip(
@@ -116,11 +130,11 @@ fun HanFuPicker(input: HandInput, onChange: (HandInput) -> Unit) {
             FilterChip(
                 selected = input.hanCode == 100 + y,
                 onClick = { onChange(input.copy(hanCode = 100 + y)) },
-                label = { Text(if (y == 1) "役滿" else "${y}倍役滿") },
+                label = { Text(if (y == 1) tr("役滿", "役満") else tr("${y}倍役滿", "${y}倍役満")) },
             )
         }
     }
-    Text("符數", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+    Text(tr("符數", "符数"), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         Scoring.FU_OPTIONS.forEach { f ->
             FilterChip(
@@ -151,11 +165,12 @@ fun DeltaRow(names: List<String>, deltas: List<Int>) {
 }
 
 @Composable
-fun RecordItem(names: List<String>, record: HandRecord) {
+fun RecordItem(game: Game, record: HandRecord) {
+    val names = game.names
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp)) {
             Text(record.title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            Text(record.detail, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 4.dp))
+            Text(GameLogic.describe(record, names, game.rules, LocalLang.current), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 4.dp))
             DeltaRow(names, record.deltas)
         }
     }

@@ -41,7 +41,10 @@ fun DrawScreen(vm: GameViewModel, onDone: () -> Unit, onBack: () -> Unit) {
                 Column(Modifier.weight(1f)) {
                     Text("途中流局")
                     Text(
-                        "九種九牌・四風連打・四家立直等，不付不聽罰符，親連莊",
+                        tr(
+                            "九種九牌・四風連打・四家立直等，不付不聽罰符，親連莊",
+                            "九種九牌・四風連打・四家立直など。ノーテン罰符なし、親は連荘",
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -50,7 +53,7 @@ fun DrawScreen(vm: GameViewModel, onDone: () -> Unit, onBack: () -> Unit) {
             }
 
             if (!abortive) {
-                SectionTitle("聽牌者")
+                SectionTitle(tr("聽牌者", "テンパイ者"))
                 PlayerChips(
                     names,
                     selected = { it in tenpai },
@@ -58,7 +61,9 @@ fun DrawScreen(vm: GameViewModel, onDone: () -> Unit, onBack: () -> Unit) {
                 )
             }
 
-            SectionTitle("本局立直者（場上供託 ${game.state.kyotaku} 本）")
+            SectionTitle(
+                tr("本局立直者（場上供託 ${game.state.kyotaku} 本）", "この局のリーチ者（供託 ${game.state.kyotaku} 本）")
+            )
             PlayerChips(
                 names,
                 selected = { it in riichi },
@@ -71,10 +76,11 @@ fun DrawScreen(vm: GameViewModel, onDone: () -> Unit, onBack: () -> Unit) {
                 },
             )
 
-            SectionTitle("點數變動")
+            SectionTitle(tr("點數變動", "点数移動"))
             DeltaRow(names, deltas)
             Text(
-                if (abortive || game.dealer in tenpai) "親（${names[game.dealer]}）連莊" else "輪莊",
+                if (abortive || game.dealer in tenpai) tr("親（${names[game.dealer]}）連莊", "親（${names[game.dealer]}）連荘")
+                else tr("輪莊", "親流れ"),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp),

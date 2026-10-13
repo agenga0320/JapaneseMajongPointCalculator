@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mahjong.score.BuildConfig
 import com.mahjong.score.GameViewModel
+import com.mahjong.score.model.AppLang
 import com.mahjong.score.model.Game
 import com.mahjong.score.model.GameLogic
 
@@ -44,7 +45,16 @@ fun HomeScreen(
     var confirmNew by remember { mutableStateOf(false) }
     val current = vm.current
 
-    Scaffold(topBar = { SimpleTopBar("日本麻雀点数計算機", null) }) { pad ->
+    Scaffold(
+        topBar = {
+            SimpleTopBar("日本麻雀点数計算機", null) {
+                // 切換成另一種語言
+                TextButton(onClick = { vm.changeLang(if (vm.lang == AppLang.JA) AppLang.ZH else AppLang.JA) }) {
+                    Text(if (vm.lang == AppLang.JA) "中文" else "日本語")
+                }
+            }
+        },
+    ) { pad ->
         LazyColumn(
             Modifier.padding(pad).fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
@@ -57,9 +67,9 @@ fun HomeScreen(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                     ) {
                         Column(Modifier.padding(16.dp)) {
-                            Text("進行中的半莊", style = MaterialTheme.typography.labelLarge)
+                            Text(tr("進行中的半莊", "進行中の半荘"), style = MaterialTheme.typography.labelLarge)
                             Text(
-                                if (current.finished) "已結束（尚未保存）" else current.roundTitle,
+                                if (current.finished) tr("已結束（尚未保存）", "終了（未保存）") else current.roundTitle,
                                 style = MaterialTheme.typography.titleLarge,
                             )
                             Text(
@@ -67,7 +77,7 @@ fun HomeScreen(
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.padding(vertical = 4.dp),
                             )
-                            Button(onClick = onContinue, modifier = Modifier.padding(top = 8.dp)) { Text("繼續") }
+                            Button(onClick = onContinue, modifier = Modifier.padding(top = 8.dp)) { Text(tr("繼續", "続ける")) }
                         }
                     }
                 }
@@ -76,26 +86,26 @@ fun HomeScreen(
                 Button(
                     onClick = { if (current != null) confirmNew = true else onNew() },
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("開始新半莊") }
+                ) { Text(tr("開始新半莊", "新しい半荘を始める")) }
             }
             item {
-                OutlinedButton(onClick = onCalc, modifier = Modifier.fillMaxWidth()) { Text("點數速查") }
+                OutlinedButton(onClick = onCalc, modifier = Modifier.fillMaxWidth()) { Text(tr("點數速查", "点数早見表")) }
             }
-            item { SectionTitle("歷史紀錄") }
+            item { SectionTitle(tr("歷史紀錄", "対局履歴")) }
             if (vm.history.isEmpty()) {
-                item { Text("尚無紀錄", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                item { Text(tr("尚無紀錄", "履歴はありません"), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             items(vm.history, key = { it.id }) { g -> HistoryCard(g) { onHistory(g.id) } }
             item {
                 Row(Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "版本 v${BuildConfig.VERSION_NAME}",
+                        tr("版本", "バージョン") + " v${BuildConfig.VERSION_NAME}",
                         Modifier.weight(1f),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     TextButton(onClick = { vm.checkUpdate(manual = true) }, enabled = !vm.checkingUpdate) {
-                        Text(if (vm.checkingUpdate) "檢查中…" else "檢查更新")
+                        Text(if (vm.checkingUpdate) tr("檢查中…", "確認中…") else tr("檢查更新", "更新を確認"))
                     }
                 }
             }
@@ -105,10 +115,17 @@ fun HomeScreen(
     if (confirmNew) {
         AlertDialog(
             onDismissRequest = { confirmNew = false },
-            title = { Text("開始新半莊") },
-            text = { Text("目前進行中的半莊尚未保存，開始新半莊後將被捨棄。") },
-            confirmButton = { TextButton(onClick = { confirmNew = false; onNew() }) { Text("繼續") } },
-            dismissButton = { TextButton(onClick = { confirmNew = false }) { Text("取消") } },
+            title = { Text(tr("開始新半莊", "新しい半荘")) },
+            text = {
+                Text(
+                    tr(
+                        "目前進行中的半莊尚未保存，開始新半莊後將被捨棄。",
+                        "進行中の半荘は保存されていません。新しい半荘を始めると破棄されます。",
+                    )
+                )
+            },
+            confirmButton = { TextButton(onClick = { confirmNew = false; onNew() }) { Text(tr("繼續", "続ける")) } },
+            dismissButton = { TextButton(onClick = { confirmNew = false }) { Text(tr("取消", "キャンセル")) } },
         )
     }
 }

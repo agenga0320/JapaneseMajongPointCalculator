@@ -18,11 +18,26 @@ data class Rules(
 /** kyoku: 0..3 = 東1〜4局，4..7 = 南1〜4局 */
 data class RoundState(val kyoku: Int, val honba: Int, val kyotaku: Int, val scores: List<Int>)
 
-/** 一局的結果。before 保留局前狀態，用於復原 */
-data class HandRecord(val before: RoundState, val title: String, val detail: String, val deltas: List<Int>)
+/**
+ * 一局的結果。before 保留局前狀態，用於復原。
+ * wins 非空為和了（loser == null 為自摸），否則為流局。
+ * legacyDetail：v1.0.0 以文字保存的舊紀錄，有值時直接顯示。
+ */
+data class HandRecord(
+    val before: RoundState,
+    val deltas: List<Int>,
+    val wins: List<Win> = emptyList(),
+    val loser: Int? = null,
+    val tenpai: Set<Int> = emptySet(),
+    val riichi: Set<Int> = emptySet(),
+    val abortive: Boolean = false,
+    val legacyDetail: String? = null,
+) {
+    val title: String get() = roundTitle(before)
+}
 
-/** note：由手牌判定得到的役一覽（手動輸入翻符時為空） */
-data class Win(val winner: Int, val han: Int, val fu: Int, val yakuman: Int, val note: String = "")
+/** yaku：由手牌判定得到的役（手動輸入翻符時為空） */
+data class Win(val winner: Int, val han: Int, val fu: Int, val yakuman: Int, val yaku: List<YakuItem> = emptyList())
 
 data class Standing(val player: Int, val rank: Int, val score: Int, val pt: Double)
 
@@ -91,17 +106,7 @@ object GameLogic {
 
     fun applyWin(game: Game, wins: List<Win>, loser: Int?, riichi: Set<Int>): Game {
         val s = game.state
-        val n = game.names
         val d = winDeltas(game, wins, loser, riichi)
-        val detail = buildString {
-            append(wins.joinToString("、") { w ->
-                "${n[w.winner]} ${if (loser == null) "自摸" else "榮和"} " +
-                    Scoring.handLabel(w.han, w.fu, w.yakuman, game.rules.kiriage) +
-                    if (w.note.isNotEmpty()) "（${w.note}）" else ""
-            })
-            if (loser != null) append("（${n[loser]} 放銃）")
-            if (riichi.isNotEmpty()) append("\n立直：${riichi.sorted().joinToString("、") { n[it] }}")
-        }
         val dealerKeeps = wins.any { it.winner == game.dealer }
         val next = RoundState(
             kyoku = if (dealerKeeps) s.kyoku else s.kyoku + 1,
@@ -109,7 +114,7 @@ object GameLogic {
             kyotaku = 0,
             scores = s.scores.mapIndexed { i, v -> v + d[i] },
         )
-        return advance(game, next, HandRecord(s, roundTitle(s), detail, d.toList()))
+        return advance(game, next, HandRecord(s, d.toList(), wins = wins, loser = loser, riichi = riichi))
     }
 
     /** 流局的點數變動（不聽罰符 3000 點）。abortive = 途中流局，不付罰符 */
@@ -126,16 +131,7 @@ object GameLogic {
 
     fun applyDraw(game: Game, tenpai: Set<Int>, riichi: Set<Int>, abortive: Boolean): Game {
         val s = game.state
-        val n = game.names
         val d = drawDeltas(tenpai, riichi, abortive)
-        val detail = buildString {
-            if (abortive) append("途中流局")
-            else {
-                append("流局　")
-                append(if (tenpai.isEmpty()) "全員不聽" else "聽牌：${tenpai.sorted().joinToString("、") { n[it] }}")
-            }
-            if (riichi.isNotEmpty()) append("\n立直：${riichi.sorted().joinToString("、") { n[it] }}")
-        }
         val dealerKeeps = abortive || game.dealer in tenpai
         val next = RoundState(
             kyoku = if (dealerKeeps) s.kyoku else s.kyoku + 1,
@@ -143,7 +139,34 @@ object GameLogic {
             kyotaku = s.kyotaku + riichi.size,
             scores = s.scores.mapIndexed { i, v -> v + d[i] },
         )
-        return advance(game, next, HandRecord(s, roundTitle(s), detail, d.toList()))
+        val rec = HandRecord(s, d.toList(), tenpai = if (abortive) emptySet() else tenpai, riichi = riichi, abortive = abortive)
+        return advance(game, next, rec)
+    }
+
+    /** 一局紀錄的文字說明 */
+    fun describe(rec: HandRecord, names: List<String>, rules: Rules, lang: AppLang): String {
+        rec.legacyDetail?.let { return it }
+        fun join(ps: Set<Int>) = ps.sorted().joinToString("、") { names[it] }
+        return buildString {
+            if (rec.wins.isNotEmpty()) {
+                append(rec.wins.joinToString("、") { w ->
+                    val how = if (rec.loser == null) lang.t("自摸", "ツモ") else lang.t("榮和", "ロン")
+                    val yaku = w.yaku.joinToString("、") { y -> if (y.isDora) "${y.label(lang)}${y.han}" else y.label(lang) }
+                    "${names[w.winner]} $how ${Scoring.handLabel(w.han, w.fu, w.yakuman, rules.kiriage, lang)}" +
+                        if (yaku.isNotEmpty()) "（$yaku）" else ""
+                })
+                rec.loser?.let { append(lang.t("（${names[it]} 放銃）", "（${names[it]} 放銃）")) }
+            } else if (rec.abortive) {
+                append("途中流局")
+            } else {
+                append(lang.t("流局　", "流局　"))
+                append(
+                    if (rec.tenpai.isEmpty()) lang.t("全員不聽", "全員ノーテン")
+                    else lang.t("聽牌：", "テンパイ：") + join(rec.tenpai)
+                )
+            }
+            if (rec.riichi.isNotEmpty()) append("\n" + lang.t("立直：", "リーチ：") + join(rec.riichi))
+        }
     }
 
     private fun advance(game: Game, next: RoundState, rec: HandRecord): Game {

@@ -45,7 +45,13 @@ fun GameScreen(
     var confirmUndo by remember { mutableStateOf(false) }
 
     val lang = LocalLang.current
-    Scaffold(topBar = { SimpleTopBar(if (game.finished) tr("半莊結束", "半荘終了") else game.roundTitle, onBack) }) { pad ->
+    Scaffold(
+        topBar = {
+            SimpleTopBar(if (game.finished) tr("半莊結束", "半荘終了") else game.roundTitle, onBack) {
+                if (game.records.isNotEmpty()) ShareRecordAction(game)
+            }
+        },
+    ) { pad ->
         LazyColumn(
             Modifier.padding(pad).fillMaxSize(),
             contentPadding = PaddingValues(16.dp),

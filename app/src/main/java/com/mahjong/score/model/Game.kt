@@ -36,7 +36,10 @@ data class HandRecord(
     val title: String get() = roundTitle(before)
 }
 
-/** yaku / fuItems：由手牌判定得到的役與符的明細（手動輸入翻符時為空） */
+/**
+ * yaku / fuItems：由手牌判定得到的役與符的明細；hand / melds：輸入的手牌（最後一張為和了牌）與副露。
+ * 手動輸入翻符時皆為空。
+ */
 data class Win(
     val winner: Int,
     val han: Int,
@@ -44,9 +47,18 @@ data class Win(
     val yakuman: Int,
     val yaku: List<YakuItem> = emptyList(),
     val fuItems: List<FuItem> = emptyList(),
+    val hand: List<Int> = emptyList(),
+    val melds: List<Meld> = emptyList(),
 )
 
 data class Standing(val player: Int, val rank: Int, val score: Int, val pt: Double)
+
+/** 一筆點數移動。from / to 為玩家 index，或 [Transfer.POT]（供託） */
+data class Transfer(val from: Int, val to: Int, val amount: Int) {
+    companion object {
+        const val POT = -1
+    }
+}
 
 data class Game(
     val id: Long,
@@ -148,6 +160,50 @@ object GameLogic {
         )
         val rec = HandRecord(s, d.toList(), tenpai = if (abortive) emptySet() else tenpai, riichi = riichi, abortive = abortive)
         return advance(game, next, rec)
+    }
+
+    /**
+     * 一局中誰付給誰多少（立直棒進供託、供託給和了者也各算一筆）。
+     * 與紀錄的點數變動不一致時（如 v1.0.0 舊紀錄）回傳 null。
+     */
+    fun transfers(game: Game, rec: HandRecord): List<Transfer>? {
+        if (rec.legacyDetail != null) return null
+        val s = rec.before
+        val dealer = s.kyoku % 4
+        val raw = mutableListOf<Transfer>()
+        rec.riichi.forEach { raw += Transfer(it, Transfer.POT, 1000) }
+        if (rec.wins.isNotEmpty()) {
+            val loser = rec.loser
+            val head = if (loser == null) rec.wins.first().winner
+            else (1..3).map { (loser + it) % 4 }.first { p -> rec.wins.any { it.winner == p } }
+            for (w in rec.wins) {
+                val pay = Scoring.payment(w.han, w.fu, w.yakuman, w.winner == dealer, game.rules.kiriage)
+                val honba = if (w.winner == head) s.honba else 0
+                if (loser == null) {
+                    for (q in 0 until 4) {
+                        if (q == w.winner) continue
+                        val base = if (w.winner == dealer || q != dealer) pay.tsumoChild else pay.tsumoDealer
+                        raw += Transfer(q, w.winner, base + 100 * honba)
+                    }
+                } else {
+                    raw += Transfer(loser, w.winner, pay.ron + 300 * honba)
+                }
+            }
+            val pot = (s.kyotaku + rec.riichi.size) * 1000
+            if (pot > 0) raw += Transfer(Transfer.POT, head, pot)
+        } else if (!rec.abortive && rec.tenpai.size in 1..3) {
+            // 不聽者平均付給每位聽牌者，合計 3000
+            val noten = (0 until 4).filter { it !in rec.tenpai }
+            val each = 3000 / (noten.size * rec.tenpai.size)
+            for (n in noten) for (t in rec.tenpai) raw += Transfer(n, t, each)
+        }
+        val merged = raw.groupBy { it.from to it.to }.map { (k, v) -> Transfer(k.first, k.second, v.sumOf { it.amount }) }
+        val net = IntArray(4)
+        merged.forEach {
+            if (it.from >= 0) net[it.from] -= it.amount
+            if (it.to >= 0) net[it.to] += it.amount
+        }
+        return if (net.toList() == rec.deltas) merged else null
     }
 
     /** 一局紀錄的文字說明 */

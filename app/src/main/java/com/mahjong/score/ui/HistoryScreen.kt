@@ -35,6 +35,7 @@ fun HistoryScreen(game: Game, onDelete: () -> Unit, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             SimpleTopBar(dateText(game.startedAt), onBack) {
+                ShareRecordAction(game)
                 IconButton(onClick = { confirmDelete = true }) {
                     Icon(Icons.Filled.Delete, contentDescription = tr("刪除", "削除"))
                 }

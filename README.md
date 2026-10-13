@@ -14,6 +14,7 @@
 - **結算**：剩餘供託歸第1名，pt =（點數 − 返點）/1000 ＋ 馬 ＋ オカ（第1名）
 - **歷史紀錄**：保存每場半莊的結算與逐局紀錄，可刪除
 - **中文／日本語切換**：首頁右上角切換，設定會保存；首次啟動依手機語言決定。役名、對局紀錄也會跟著切換
+- **分享半莊紀錄**：對局或歷史紀錄畫面右上角的分享按鈕，產生 PDF（LINE・微信）或每頁一張的圖片（Instagram）。內容依序為局數、結果（和了附手牌圖）、點數移動圖（四家依座風坐在桌子四邊，箭頭標示誰付給誰），最後是排名
 - **點數速查**：任意翻符的榮和／自摸點數，以及 1〜4 翻的完整點數表
 
 ## 規則細節
@@ -38,7 +39,16 @@
 - 「下載並安裝」在 App 內下載 Release 附加的 `.apk`（顯示進度），完成後開啟系統安裝畫面覆蓋更新；第一次需在設定允許本 App「安裝不明應用程式」（App 會引導到設定頁）。下載失敗可改用瀏覽器下載；Release 沒有附 APK 時開啟 Release 頁面；「忽略此版本」之後不再提示該版本，直到更新的版本發布；「稍後」只關閉這一次
 - 首頁底部的「檢查更新」可手動檢查（已忽略的版本也會顯示）
 
-### 發布新版本
+### 發布新版本（release.bat）
+
+雙擊或在命令列執行專案根目錄的 `release.bat`：
+
+- `release.bat`：建置正式簽名 APK（輸出到 `dist\`）→ 確認後 commit 並 push
+- `release.bat 1.5.0 "更新內容"`：自動更新 `versionName`／`versionCode` → 建置 → commit・push → 確認後發布 GitHub Release `v1.5.0`（附 APK 與直接下載連結）
+
+需要已安裝 Android Studio（使用其 JDK）、Android SDK、`gh` 並已登入。
+
+### 手動發布
 
 1. 修改 `app/build.gradle.kts` 的 `versionName`（與 `versionCode` + 1）
 2. 建置正式簽名的 APK：`gradlew assembleRelease`（輸出 `app/build/outputs/apk/release/app-release.apk`）

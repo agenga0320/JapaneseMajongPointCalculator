@@ -97,8 +97,8 @@ fun CalcScreen(onBack: () -> Unit) {
             initial = Situation(seatWind = if (dealer) 0 else 1),
             lockTsumo = false,
             kiriage = false,
-            onApply = { result, sit ->
-                input = HandInput.fromResult(result)
+            onApply = { result, sit, hand, melds ->
+                input = HandInput.fromResult(result, hand, melds)
                 dealer = sit.dealer
                 showEntry = false
             },

@@ -6,6 +6,8 @@ import com.mahjong.score.model.FuItem
 import com.mahjong.score.model.FuKind
 import com.mahjong.score.model.Game
 import com.mahjong.score.model.HandRecord
+import com.mahjong.score.model.Meld
+import com.mahjong.score.model.MeldType
 import com.mahjong.score.model.RoundState
 import com.mahjong.score.model.Rules
 import com.mahjong.score.model.Win
@@ -144,6 +146,15 @@ private fun recordToJson(r: HandRecord) = JSONObject().apply {
                         })
                     }
                 })
+                put("hand", JSONArray(w.hand))
+                put("melds", JSONArray().apply {
+                    w.melds.forEach { m ->
+                        put(JSONObject().apply {
+                            put("type", m.type.name)
+                            put("tile", m.tile)
+                        })
+                    }
+                })
             })
         }
     })
@@ -176,6 +187,13 @@ private fun recordFromJson(x: JSONObject): HandRecord {
                 fuItems = List(fs.length()) { j -> fs.getJSONObject(j) }.mapNotNull { f ->
                     val key = runCatching { FuKind.valueOf(f.getString("k")) }.getOrNull() ?: return@mapNotNull null
                     FuItem(key, f.getInt("fu"), f.optInt("tile", -1))
+                },
+                hand = w.optJSONArray("hand")?.ints() ?: emptyList(),
+                melds = (w.optJSONArray("melds") ?: JSONArray()).let { ms ->
+                    List(ms.length()) { j -> ms.getJSONObject(j) }.mapNotNull { m ->
+                        val type = runCatching { MeldType.valueOf(m.getString("type")) }.getOrNull() ?: return@mapNotNull null
+                        Meld(type, m.getInt("tile"))
+                    }
                 },
             )
         }

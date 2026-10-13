@@ -39,6 +39,7 @@ import com.mahjong.score.model.GameLogic
 import com.mahjong.score.model.YakuItem
 import com.mahjong.score.model.HandRecord
 import com.mahjong.score.model.HandResult
+import com.mahjong.score.model.Meld
 import com.mahjong.score.model.Scoring
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -108,18 +109,20 @@ data class HandInput(
     val fu: Int = 30,
     val yaku: List<YakuItem> = emptyList(),
     val fuItems: List<FuItem> = emptyList(),
+    val hand: List<Int> = emptyList(),
+    val melds: List<Meld> = emptyList(),
 ) {
     val han: Int get() = if (hanCode > 100) 13 else hanCode
     val yakuman: Int get() = if (hanCode > 100) hanCode - 100 else 0
     val fuMatters: Boolean get() = hanCode < 5
 
-    /** 手動改翻符時，手牌判定的明細就不再對應，一併清除 */
-    fun manual(): HandInput = copy(yaku = emptyList(), fuItems = emptyList())
+    /** 手動改翻符時，手牌判定的明細與手牌就不再對應，一併清除 */
+    fun manual(): HandInput = copy(yaku = emptyList(), fuItems = emptyList(), hand = emptyList(), melds = emptyList())
 
     companion object {
-        fun fromResult(r: HandResult): HandInput =
-            if (r.yakuman > 0) HandInput(100 + r.yakuman.coerceAtMost(3), 30, r.yaku, r.fuItems)
-            else HandInput(r.han.coerceAtMost(13), r.fu, r.yaku, r.fuItems)
+        fun fromResult(r: HandResult, hand: List<Int>, melds: List<Meld>): HandInput =
+            if (r.yakuman > 0) HandInput(100 + r.yakuman.coerceAtMost(3), 30, r.yaku, r.fuItems, hand, melds)
+            else HandInput(r.han.coerceAtMost(13), r.fu, r.yaku, r.fuItems, hand, melds)
     }
 }
 

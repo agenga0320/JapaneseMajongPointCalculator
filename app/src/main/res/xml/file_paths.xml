@@ -2,4 +2,6 @@
 <paths>
     <!-- GameViewModel 下載更新 APK 的位置 -->
     <cache-path name="updates" path="updates/" />
+    <!-- RecordShare 產生的 PDF／圖片 -->
+    <cache-path name="share" path="share/" />
 </paths>

@@ -116,7 +116,8 @@ fun HandEntryDialog(
     initial: Situation,
     lockTsumo: Boolean,
     kiriage: Boolean,
-    onApply: (HandResult, Situation) -> Unit,
+    /** 回傳判定結果、狀況、手牌（最後一張為和了牌）與副露 */
+    onApply: (HandResult, Situation, List<Int>, List<Meld>) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var hand by remember { mutableStateOf(listOf<Int>()) }
@@ -279,7 +280,7 @@ fun HandEntryDialog(
                                     else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 Button(
-                                    onClick = { (analysis as? Analysis.Agari)?.let { onApply(it.result, effSit) } },
+                                    onClick = { (analysis as? Analysis.Agari)?.let { onApply(it.result, effSit, hand, melds) } },
                                     enabled = analysis is Analysis.Agari,
                                 ) { Text(tr("套用", "適用")) }
                             }

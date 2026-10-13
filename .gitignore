@@ -8,3 +8,7 @@ captures/
 .kotlin/
 # APK 透過 GitHub Releases 發布
 *.apk
+# 正式簽名金鑰與密碼
+keystore.properties
+*.jks
+*.keystore

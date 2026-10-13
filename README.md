@@ -40,9 +40,23 @@
 ### 發布新版本
 
 1. 修改 `app/build.gradle.kts` 的 `versionName`（與 `versionCode` + 1）
-2. 建置 APK
+2. 建置正式簽名的 APK：`gradlew assembleRelease`（輸出 `app/build/outputs/apk/release/app-release.apk`）
 3. 建立 tag 為 `v{versionName}` 的 GitHub Release 並附上 APK：
-   `gh release create v1.1.0 app/build/outputs/apk/debug/app-debug.apk#JapaneseMahjongPointCalculator-v1.1.0.apk --title v1.1.0 --notes "更新內容"`
+   `gh release create v1.1.0 app/build/outputs/apk/release/app-release.apk#JapaneseMahjongPointCalculator-v1.1.0.apk --title v1.1.0 --notes "更新內容"`
+
+### 正式簽名金鑰
+
+release 版以專案根目錄的 `keystore.properties`（不進版控）簽名：
+
+```properties
+storeFile=~/.keystores/japanese-mahjong-release.jks
+storePassword=...
+keyAlias=release
+keyPassword=...
+```
+
+**金鑰檔與密碼務必備份。** 遺失後就無法再發布能覆蓋安裝的更新（使用者必須解除安裝舊版，資料會遺失）。
+沒有 `keystore.properties` 時，`assembleRelease` 會產生未簽名的 APK。
 
 ## 建置
 

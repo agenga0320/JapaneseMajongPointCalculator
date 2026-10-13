@@ -10,8 +10,11 @@ import com.mahjong.score.data.ReleaseInfo
 import com.mahjong.score.data.Storage
 import com.mahjong.score.data.UpdateChecker
 import com.mahjong.score.model.AppLang
+import java.io.File
 import java.util.Locale
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.mahjong.score.model.Game
@@ -20,6 +23,14 @@ import com.mahjong.score.model.Rules
 import com.mahjong.score.model.Win
 
 enum class UpdateResult { UP_TO_DATE, FAILED }
+
+sealed interface DownloadState {
+    data object Idle : DownloadState
+    /** progress：0..1 */
+    data class Downloading(val progress: Float) : DownloadState
+    data class Done(val file: File) : DownloadState
+    data object Failed : DownloadState
+}
 
 class GameViewModel(app: Application) : AndroidViewModel(app) {
     private val storage = Storage(app)
@@ -72,11 +83,42 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     fun ignoreUpdate() {
         availableUpdate?.let { storage.ignoredVersion = it.tag }
-        availableUpdate = null
+        dismissUpdate()
     }
 
     fun dismissUpdate() {
+        downloadJob?.cancel()
+        download = DownloadState.Idle
         availableUpdate = null
+    }
+
+    // ---- App 內下載更新 ----
+
+    var download by mutableStateOf<DownloadState>(DownloadState.Idle)
+        private set
+    private var downloadJob: Job? = null
+    private val updateDir = File(app.cacheDir, "updates")
+
+    fun startDownload() {
+        val r = availableUpdate ?: return
+        val url = r.apkUrl ?: return
+        downloadJob?.cancel()
+        download = DownloadState.Downloading(0f)
+        downloadJob = viewModelScope.launch {
+            val dest = File(updateDir, "update-${r.tag}.apk")
+            val ok = withContext(Dispatchers.IO) {
+                updateDir.listFiles()?.forEach { it.delete() } // 清掉舊的下載
+                runCatching {
+                    UpdateChecker.downloadApk(url, dest) { download = DownloadState.Downloading(it) }
+                }.onFailure { if (it is CancellationException) throw it }.isSuccess
+            }
+            download = if (ok) DownloadState.Done(dest) else DownloadState.Failed
+        }
+    }
+
+    fun cancelDownload() {
+        downloadJob?.cancel()
+        download = DownloadState.Idle
     }
 
     fun clearUpdateResult() {

@@ -3,6 +3,8 @@
 
     <!-- 檢查 GitHub 上的最新版本 -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- App 內下載新版後開啟安裝畫面（使用者須在系統設定允許一次） -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:allowBackup="true"
@@ -20,6 +22,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- 將下載的 APK 交給系統安裝程式 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>

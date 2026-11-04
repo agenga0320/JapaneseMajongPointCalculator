@@ -92,7 +92,7 @@ fun DrawScreen(vm: GameViewModel, onDone: () -> Unit, onBack: () -> Unit) {
                     onDone()
                 },
                 modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
-            ) { Text("確定") }
+            ) { Text(tr("記錄這一局", "この局を記録")) }
         }
     }
 }

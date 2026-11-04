@@ -88,7 +88,7 @@ fun GameScreen(
                             ) { Text(tr("保存紀錄", "記録を保存")) }
                             OutlinedButton(
                                 onClick = { vm.undo() },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                             ) {
                                 Text(
                                     if (game.manualEnd) tr("取消結束，繼續對局", "終了を取り消して続ける")

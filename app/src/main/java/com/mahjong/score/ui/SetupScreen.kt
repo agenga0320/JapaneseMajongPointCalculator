@@ -117,7 +117,7 @@ fun SetupScreen(vm: GameViewModel, onStart: () -> Unit, onBack: () -> Unit) {
                     onStart()
                 },
                 modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
-            ) { Text("開始") }
+            ) { Text(tr("開始對局", "対局開始")) }
         }
     }
 }

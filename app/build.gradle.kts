@@ -21,9 +21,9 @@ android {
         applicationId = "com.mahjong.score"
         minSdk = 26
         targetSdk = 34
-        versionCode = 6
+        versionCode = 7
         // 發布新版時同步更新，並在 GitHub 建立 tag 為 v{versionName} 的 Release
-        versionName = "1.4.0"
+        versionName = "1.4.1"
     }
 
     signingConfigs {

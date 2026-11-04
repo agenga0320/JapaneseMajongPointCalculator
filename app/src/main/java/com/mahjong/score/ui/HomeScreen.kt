@@ -1,6 +1,5 @@
 package com.mahjong.score.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -63,7 +62,8 @@ fun HomeScreen(
             if (current != null) {
                 item {
                     Card(
-                        Modifier.fillMaxWidth().clickable(onClick = onContinue),
+                        onClick = onContinue,
+                        modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                     ) {
                         Column(Modifier.padding(16.dp)) {
@@ -83,10 +83,13 @@ fun HomeScreen(
                 }
             }
             item {
-                Button(
-                    onClick = { if (current != null) confirmNew = true else onNew() },
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text(tr("開始新半莊", "新しい半荘を始める")) }
+                val label = tr("開始新半莊", "新しい半荘を始める")
+                // 有進行中的半莊時「繼續」才是主要動作，新半莊降為次要
+                if (current != null) {
+                    OutlinedButton(onClick = { confirmNew = true }, modifier = Modifier.fillMaxWidth()) { Text(label) }
+                } else {
+                    Button(onClick = onNew, modifier = Modifier.fillMaxWidth()) { Text(label) }
+                }
             }
             item {
                 OutlinedButton(onClick = onCalc, modifier = Modifier.fillMaxWidth()) { Text(tr("點數速查", "点数早見表")) }
@@ -132,7 +135,7 @@ fun HomeScreen(
 
 @Composable
 private fun HistoryCard(game: Game, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp)) {
             Text(
                 "${dateText(game.startedAt)}　${game.records.size}局",

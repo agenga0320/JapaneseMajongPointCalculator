@@ -186,11 +186,22 @@ fun HandEntryDialog(
                             }
                             if (full) {
                                 Spacer(Modifier.width(10.dp))
-                                TileView(hand.last(), SMALL_TILE, highlight = true, onClick = { removeAt(hand.lastIndex) })
+                                // 和了牌不只靠紅框，加上文字標籤
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    TileView(hand.last(), SMALL_TILE, highlight = true, onClick = { removeAt(hand.lastIndex) })
+                                    Text(
+                                        "和了牌",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.secondary,
+                                    )
+                                }
                             }
                         }
                         Text(
-                            if (hand.isEmpty()) tr("從下方選牌加入手牌", "下の牌をタップして手牌に追加")
+                            if (hand.isEmpty()) tr(
+                                "從下方選牌加入手牌，最後加入的那張就是和了牌",
+                                "下の牌をタップして追加（最後に追加した牌が和了牌）",
+                            )
                             else tr("點牌移除；長按設為和了牌（紅框為和了牌）", "タップで削除・長押しで和了牌に設定（赤枠が和了牌）"),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,

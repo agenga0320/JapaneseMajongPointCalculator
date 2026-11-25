@@ -64,6 +64,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         runCatching { downloads.cleanUpIfInstalled(BuildConfig.VERSION_NAME) }
+        // v1.4.1 以前 App 自己下載的 APK 放在快取的 updates/，現在改用系統下載，舊檔刪掉
+        runCatching { java.io.File(app.cacheDir, "updates").deleteRecursively() }
         checkUpdate(manual = false)
     }
 
@@ -76,7 +78,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             checkingUpdate = false
             val newer = latest != null && UpdateChecker.isNewer(latest.version, BuildConfig.VERSION_NAME)
             when {
-                newer && (manual || latest!!.tag != storage.ignoredVersion) -> {
+                newer && (manual || latest.tag != storage.ignoredVersion) -> {
                     availableUpdate = latest
                     // 上次已開始（或已完成）的背景下載：直接顯示進度或「安裝」
                     if (latest.apkUrl != null && runCatching { downloads.isKnown(latest.apkUrl) }.getOrDefault(false)) watchDownload()

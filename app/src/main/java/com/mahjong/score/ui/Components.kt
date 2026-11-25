@@ -94,26 +94,6 @@ fun SectionTitle(text: String) {
     )
 }
 
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-fun PlayerChips(
-    names: List<String>,
-    selected: (Int) -> Boolean,
-    onToggle: (Int) -> Unit,
-    enabled: (Int) -> Boolean = { true },
-) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        names.forEachIndexed { i, n ->
-            FilterChip(
-                selected = selected(i),
-                onClick = { onToggle(i) },
-                enabled = enabled(i),
-                label = { Text(n) },
-            )
-        }
-    }
-}
-
 /** 翻數選擇的編碼：1..13 = 翻數（13 = 累計役滿），101..103 = 役滿倍數 */
 data class HandInput(
     val hanCode: Int = 1,

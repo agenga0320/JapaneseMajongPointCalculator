@@ -23,7 +23,7 @@
             </intent-filter>
         </activity>
 
-        <!-- 將下載的 APK 交給系統安裝程式 -->
+        <!-- 分享 PDF／圖片時把檔案交給其他 App -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

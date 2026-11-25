@@ -66,7 +66,6 @@ class RecordReport(private val game: Game, private val lang: AppLang, private va
         val PRIMARY = Color.rgb(0xE9, 0xC4, 0x6A)
         val PLUS = Color.rgb(0x7F, 0xD1, 0xB0)
         val MINUS = Color.rgb(0xFF, 0x86, 0x78)
-        val DIVIDER = Color.rgb(0x2C, 0x5A, 0x4E)
         val ARROW = Color.rgb(0xE9, 0xC4, 0x6A)
         val GOLD = Color.rgb(0xE9, 0xC4, 0x6A)
         val RED = Color.rgb(0xE5, 0x58, 0x4B)
@@ -92,7 +91,6 @@ class RecordReport(private val game: Game, private val lang: AppLang, private va
     private val pFooter = textPaint(8f, MUTED, center = true)
     private val pRank = textPaint(11f, bold = true)
 
-    private val pDivider = Paint().apply { color = DIVIDER; strokeWidth = 0.6f }
     private val pFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val pStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 0.8f }
 

@@ -13,6 +13,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,16 +40,30 @@ fun UpdateDialogs(vm: GameViewModel) {
 
     vm.availableUpdate?.let { r ->
         val state = vm.download
-        // 已引導使用者去設定允許安裝時顯示提示
-        var askedPermission by remember(r.tag) { mutableStateOf(false) }
+        val notification = tr("日本麻雀点数計算機 新版本", "日本麻雀点数計算機 新しいバージョン")
 
         fun install(done: DownloadState.Done) {
             if (ApkInstaller.canInstall(context)) {
-                runCatching { ApkInstaller.install(context, done.file) }
+                runCatching { ApkInstaller.install(context, done.uri) }
             } else {
-                askedPermission = true
+                // 回到 App 時（ON_RESUME）自動接著安裝
+                vm.installWhenAllowed = true
                 runCatching { ApkInstaller.openPermissionSettings(context) }
             }
+        }
+
+        val lifecycle = LocalLifecycleOwner.current.lifecycle
+        DisposableEffect(lifecycle, state) {
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME && vm.installWhenAllowed && state is DownloadState.Done &&
+                    ApkInstaller.canInstall(context)
+                ) {
+                    vm.installWhenAllowed = false
+                    runCatching { ApkInstaller.install(context, state.uri) }
+                }
+            }
+            lifecycle.addObserver(observer)
+            onDispose { lifecycle.removeObserver(observer) }
         }
 
         fun openInBrowser() = runCatching { uriHandler.openUri(r.apkUrl ?: r.pageUrl) }
@@ -61,15 +79,21 @@ fun UpdateDialogs(vm: GameViewModel) {
                         is DownloadState.Downloading -> {
                             Text(
                                 tr("下載中… ${(state.progress * 100).toInt()}%", "ダウンロード中… ${(state.progress * 100).toInt()}%"),
-                                modifier = Modifier.padding(top = 12.dp, bottom = 8.dp),
+                                modifier = Modifier.padding(top = 12.dp),
+                            )
+                            Text(
+                                tr("關掉 App 也會繼續下載，完成後會通知。", "アプリを閉じてもダウンロードは続き、完了すると通知されます。"),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
                             )
                             LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth())
                         }
                         is DownloadState.Done -> {
                             Text(
-                                if (askedPermission) tr(
-                                    "請在設定中允許「安裝不明應用程式」，返回後再按一次「安裝」。",
-                                    "設定で「不明なアプリのインストール」を許可してから戻り、もう一度「インストール」を押してください。",
+                                if (vm.installWhenAllowed) tr(
+                                    "請在設定中允許「安裝不明應用程式」，返回後會自動開始安裝。",
+                                    "設定で「不明なアプリのインストール」を許可して戻ると、自動でインストールが始まります。",
                                 ) else tr(
                                     "下載完成。按「安裝」即可覆蓋更新，紀錄會保留。",
                                     "ダウンロード完了。「インストール」で上書き更新します（記録は保持されます）。",
@@ -99,7 +123,7 @@ fun UpdateDialogs(vm: GameViewModel) {
             confirmButton = {
                 when (state) {
                     DownloadState.Idle -> TextButton(onClick = {
-                        if (r.apkUrl != null) vm.startDownload() else openInBrowser()
+                        if (r.apkUrl != null) vm.startDownload(notification) else openInBrowser()
                     }) {
                         Text(
                             if (r.apkUrl != null) tr("下載並安裝", "ダウンロードしてインストール")
@@ -112,7 +136,7 @@ fun UpdateDialogs(vm: GameViewModel) {
                     is DownloadState.Done -> TextButton(onClick = { install(state) }) {
                         Text(tr("安裝", "インストール"))
                     }
-                    DownloadState.Failed -> TextButton(onClick = vm::startDownload) {
+                    DownloadState.Failed -> TextButton(onClick = { vm.startDownload(notification) }) {
                         Text(tr("重試", "再試行"))
                     }
                 }
@@ -123,7 +147,8 @@ fun UpdateDialogs(vm: GameViewModel) {
                         TextButton(onClick = vm::ignoreUpdate) { Text(tr("忽略此版本", "このバージョンを無視")) }
                         TextButton(onClick = vm::dismissUpdate) { Text(tr("稍後", "後で")) }
                     }
-                    is DownloadState.Downloading -> Unit
+                    // 系統下載管理員會在背景繼續，完成時有通知
+                    is DownloadState.Downloading -> TextButton(onClick = vm::dismissUpdate) { Text(tr("在背景下載", "バックグラウンドで続ける")) }
                     is DownloadState.Done -> TextButton(onClick = vm::dismissUpdate) { Text(tr("稍後", "後で")) }
                     DownloadState.Failed -> Row {
                         TextButton(onClick = { openInBrowser() }) { Text(tr("用瀏覽器下載", "ブラウザで開く")) }

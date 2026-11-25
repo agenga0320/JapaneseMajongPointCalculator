@@ -9,10 +9,11 @@ import androidx.lifecycle.viewModelScope
 import com.mahjong.score.data.ReleaseInfo
 import com.mahjong.score.data.Storage
 import com.mahjong.score.data.UpdateChecker
+import com.mahjong.score.data.UpdateDownload
+import android.net.Uri
+import kotlinx.coroutines.delay
 import com.mahjong.score.model.AppLang
-import java.io.File
 import java.util.Locale
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -28,12 +29,13 @@ sealed interface DownloadState {
     data object Idle : DownloadState
     /** progress：0..1 */
     data class Downloading(val progress: Float) : DownloadState
-    data class Done(val file: File) : DownloadState
+    data class Done(val uri: Uri) : DownloadState
     data object Failed : DownloadState
 }
 
 class GameViewModel(app: Application) : AndroidViewModel(app) {
     private val storage = Storage(app)
+    private val downloads = UpdateDownload(app)
 
     var current by mutableStateOf(storage.loadCurrent())
         private set
@@ -61,6 +63,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     init {
+        runCatching { downloads.cleanUpIfInstalled(BuildConfig.VERSION_NAME) }
         checkUpdate(manual = false)
     }
 
@@ -73,7 +76,12 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             checkingUpdate = false
             val newer = latest != null && UpdateChecker.isNewer(latest.version, BuildConfig.VERSION_NAME)
             when {
-                newer && (manual || latest!!.tag != storage.ignoredVersion) -> availableUpdate = latest
+                newer && (manual || latest!!.tag != storage.ignoredVersion) -> {
+                    availableUpdate = latest
+                    // 上次已開始（或已完成）的背景下載：直接顯示進度或「安裝」
+                    if (latest.apkUrl != null && runCatching { downloads.isKnown(latest.apkUrl) }.getOrDefault(false)) watchDownload()
+                    else download = DownloadState.Idle
+                }
                 !manual -> Unit
                 latest == null -> updateResult = UpdateResult.FAILED
                 else -> updateResult = UpdateResult.UP_TO_DATE
@@ -86,41 +94,54 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         dismissUpdate()
     }
 
+    /** 關掉對話框；系統下載會在背景繼續（完成後有通知，下次開 App 會接著提示安裝） */
     fun dismissUpdate() {
-        downloadJob?.cancel()
-        download = DownloadState.Idle
+        pollJob?.cancel()
         availableUpdate = null
     }
 
-    // ---- App 內下載更新 ----
+    // ---- 用系統下載管理員下載更新 ----
 
     var download by mutableStateOf<DownloadState>(DownloadState.Idle)
         private set
-    private var downloadJob: Job? = null
-    private val updateDir = File(app.cacheDir, "updates")
+    private var pollJob: Job? = null
 
-    fun startDownload() {
+    /** 去設定允許安裝後，回到 App 時自動接著安裝 */
+    var installWhenAllowed by mutableStateOf(false)
+
+    fun startDownload(notification: String) {
         val r = availableUpdate ?: return
         val url = r.apkUrl ?: return
-        downloadJob?.cancel()
+        val ok = runCatching { downloads.enqueue(r.version, url, notification) }.isSuccess
+        if (ok) watchDownload() else download = DownloadState.Failed
+    }
+
+    /** 每秒讀一次系統下載的進度，直到完成或失敗 */
+    private fun watchDownload() {
+        pollJob?.cancel()
         download = DownloadState.Downloading(0f)
-        downloadJob = viewModelScope.launch {
-            val dest = File(updateDir, "update-${r.tag}.apk")
-            val ok = withContext(Dispatchers.IO) {
-                updateDir.listFiles()?.forEach { it.delete() } // 清掉舊的下載
-                runCatching {
-                    UpdateChecker.downloadApk(url, dest) { download = DownloadState.Downloading(it) }
-                }.onFailure { if (it is CancellationException) throw it }.isSuccess
+        pollJob = viewModelScope.launch {
+            while (true) {
+                val p = withContext(Dispatchers.IO) { runCatching { downloads.progress() }.getOrNull() }
+                when {
+                    p == null -> { download = DownloadState.Failed; return@launch }
+                    p.active -> download = DownloadState.Downloading(if (p.total > 0) p.bytes.toFloat() / p.total else 0f)
+                    p.status == android.app.DownloadManager.STATUS_SUCCESSFUL -> {
+                        download = downloads.downloaded()?.let { DownloadState.Done(it) } ?: DownloadState.Failed
+                        return@launch
+                    }
+                    else -> { download = DownloadState.Failed; return@launch }
+                }
+                delay(1000)
             }
-            download = if (ok) DownloadState.Done(dest) else DownloadState.Failed
         }
     }
 
     fun cancelDownload() {
-        downloadJob?.cancel()
+        pollJob?.cancel()
+        runCatching { downloads.cancel() }
         download = DownloadState.Idle
     }
-
     fun clearUpdateResult() {
         updateResult = null
     }
@@ -148,7 +169,12 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun endManually() {
-        current?.let { update(it.copy(finished = true, manualEnd = true)) }
+        current?.let { update(it.copy(finished = true, manualEnd = true, riichi = emptySet())) }
+    }
+
+    /** 對局中宣告／取消立直 */
+    fun toggleRiichi(p: Int) {
+        current?.let { g -> update(g.copy(riichi = if (p in g.riichi) g.riichi - p else g.riichi + p)) }
     }
 
     /** 把結束的半莊存入歷史，回傳其 id */

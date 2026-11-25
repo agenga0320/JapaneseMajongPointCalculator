@@ -92,6 +92,7 @@ private fun gameToJson(g: Game) = JSONObject().apply {
     put("records", JSONArray().apply { g.records.forEach { put(recordToJson(it)) } })
     put("finished", g.finished)
     put("manualEnd", g.manualEnd)
+    put("riichi", JSONArray(g.riichi.toList()))
 }
 
 private fun gameFromJson(o: JSONObject): Game {
@@ -114,6 +115,7 @@ private fun gameFromJson(o: JSONObject): Game {
         records = List(recs.length()) { i -> recordFromJson(recs.getJSONObject(i)) },
         finished = o.optBoolean("finished", false),
         manualEnd = o.optBoolean("manualEnd", false),
+        riichi = o.optJSONArray("riichi")?.ints()?.toSet() ?: emptySet(),
     )
 }
 

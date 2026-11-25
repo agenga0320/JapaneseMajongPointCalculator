@@ -21,6 +21,15 @@ object RecordShare {
         mkdirs()
     }
 
+    /** 把 PDF 寫進使用者在系統「儲存」畫面選好的位置（不需要儲存權限） */
+    suspend fun savePdf(context: Context, game: Game, lang: AppLang, target: Uri) = withContext(Dispatchers.IO) {
+        val file = File(shareDir(context), baseName(game) + ".pdf").also { RecordReport(game, lang, context.resources).writePdf(it) }
+        val out = context.contentResolver.openOutputStream(target) ?: error("cannot open $target")
+        out.use { o -> file.inputStream().use { it.copyTo(o) } }
+    }
+
+    fun pdfName(game: Game) = baseName(game) + ".pdf"
+
     private fun baseName(game: Game) =
         "mahjong-" + SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date(game.startedAt))
 
@@ -29,7 +38,7 @@ object RecordShare {
 
     suspend fun sharePdf(context: Context, game: Game, lang: AppLang, chooserTitle: String) {
         val file = withContext(Dispatchers.IO) {
-            File(shareDir(context), baseName(game) + ".pdf").also { RecordReport(game, lang).writePdf(it) }
+            File(shareDir(context), baseName(game) + ".pdf").also { RecordReport(game, lang, context.resources).writePdf(it) }
         }
         val uri = uriOf(context, file)
         val send = Intent(Intent.ACTION_SEND)
@@ -42,7 +51,7 @@ object RecordShare {
 
     suspend fun shareImages(context: Context, game: Game, lang: AppLang, chooserTitle: String) {
         val files = withContext(Dispatchers.IO) {
-            RecordReport(game, lang).writePngs(shareDir(context), baseName(game))
+            RecordReport(game, lang, context.resources).writePngs(shareDir(context), baseName(game))
         }
         val uris = files.map { uriOf(context, it) }
         val send = if (uris.size == 1) {

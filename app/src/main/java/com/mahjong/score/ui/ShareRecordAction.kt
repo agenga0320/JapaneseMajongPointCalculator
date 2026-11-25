@@ -1,5 +1,8 @@
 package com.mahjong.score.ui
 
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -52,6 +55,13 @@ fun ShareRecordAction(game: Game) {
         }
     }
 
+    val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
+        if (uri != null) run {
+            RecordShare.savePdf(context, game, lang, uri)
+            Toast.makeText(context, lang.t("已儲存 PDF", "PDF を保存しました"), Toast.LENGTH_SHORT).show()
+        }
+    }
+
     if (menu) {
         AlertDialog(
             onDismissRequest = { menu = false },
@@ -66,6 +76,10 @@ fun ShareRecordAction(game: Game) {
                         onClick = { run { RecordShare.shareImages(context, game, lang, chooserTitle) } },
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     ) { Text(tr("圖片（Instagram 等）", "画像（Instagram など）")) }
+                    OutlinedButton(
+                        onClick = { menu = false; save.launch(RecordShare.pdfName(game)) },
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    ) { Text(tr("儲存 PDF 到手機", "PDF を端末に保存")) }
                     Text(
                         tr(
                             "Instagram 不支援 PDF，請選擇圖片（每頁一張）。",

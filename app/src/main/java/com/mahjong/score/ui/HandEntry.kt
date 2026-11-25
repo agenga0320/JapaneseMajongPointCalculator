@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -53,20 +54,14 @@ import com.mahjong.score.model.MeldType
 import com.mahjong.score.model.Scoring
 import com.mahjong.score.model.Situation
 import com.mahjong.score.model.Tiles
+import com.mahjong.score.R
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import com.mahjong.score.model.WINDS
 
-private val TileFace = Color(0xFFFFFBF0)
-private val TileBorder = Color(0xFFB0A898)
-
-private fun tileColor(t: Int): Color = when {
-    t < 9 -> Color(0xFFC62828)
-    t < 18 -> Color(0xFF1565C0)
-    t < 27 -> Color(0xFF2E7D32)
-    t == 31 -> Color(0xFF757575)
-    t == 32 -> Color(0xFF2E7D32)
-    t == 33 -> Color(0xFFC62828)
-    else -> Color(0xFF212121)
-}
+/** 牌面圖片（FluffyStuff/riichi-mahjong-tiles，CC0），索引與 Tiles 相同：萬・筒・索 1–9、東南西北白發中 */
+private val TILE_IMAGES = intArrayOf(R.drawable.tile_0, R.drawable.tile_1, R.drawable.tile_2, R.drawable.tile_3, R.drawable.tile_4, R.drawable.tile_5, R.drawable.tile_6, R.drawable.tile_7, R.drawable.tile_8, R.drawable.tile_9, R.drawable.tile_10, R.drawable.tile_11, R.drawable.tile_12, R.drawable.tile_13, R.drawable.tile_14, R.drawable.tile_15, R.drawable.tile_16, R.drawable.tile_17, R.drawable.tile_18, R.drawable.tile_19, R.drawable.tile_20, R.drawable.tile_21, R.drawable.tile_22, R.drawable.tile_23, R.drawable.tile_24, R.drawable.tile_25, R.drawable.tile_26, R.drawable.tile_27, R.drawable.tile_28, R.drawable.tile_29, R.drawable.tile_30, R.drawable.tile_31, R.drawable.tile_32, R.drawable.tile_33)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -79,30 +74,18 @@ fun TileView(
     onLongClick: (() -> Unit)? = null,
 ) {
     val shape = RoundedCornerShape(4.dp)
-    var m = modifier
-        .alpha(if (enabled) 1f else 0.3f)
-        .background(TileFace, shape)
-        .border(
-            if (highlight) 2.dp else 1.dp,
-            if (highlight) MaterialTheme.colorScheme.secondary else TileBorder,
-            shape,
-        )
+    var m = modifier.alpha(if (enabled) 1f else 0.3f)
+    if (highlight) m = m.border(2.dp, MaterialTheme.colorScheme.secondary, shape)
     if (onClick != null && enabled) m = m.combinedClickable(onClick = onClick, onLongClick = onLongClick)
-    Box(m, contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                Tiles.rankText(tile),
-                color = tileColor(tile),
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                lineHeight = 16.sp,
-            )
-            if (!Tiles.isHonor(tile)) {
-                Text(Tiles.suitText(tile), color = tileColor(tile), fontSize = 9.sp, lineHeight = 10.sp)
-            }
-        }
-    }
+    Image(
+        painterResource(TILE_IMAGES[tile]),
+        contentDescription = Tiles.rankText(tile) + if (Tiles.isHonor(tile)) "" else Tiles.suitText(tile),
+        modifier = m,
+        contentScale = ContentScale.Fit,
+    )
 }
+
+private enum class EntryStep { CHI, PON, KAN, HAND }
 
 private val SMALL_TILE: Modifier = Modifier.size(width = 28.dp, height = 38.dp)
 
@@ -119,13 +102,32 @@ fun HandEntryDialog(
     /** 回傳判定結果、狀況、手牌（最後一張為和了牌）與副露 */
     onApply: (HandResult, Situation, List<Int>, List<Meld>) -> Unit,
     onDismiss: () -> Unit,
+    /** 引導模式：依序問 吃→碰→槓→手牌→和了牌；立直時不可能吃碰，從（暗）槓開始 */
+    guided: Boolean = false,
+    /** 標題；雙響・三響時用來標示正在輸入誰的手牌 */
+    title: String? = null,
 ) {
     var hand by remember { mutableStateOf(listOf<Int>()) }
     var melds by remember { mutableStateOf(listOf<Meld>()) }
-    var mode by remember { mutableStateOf<MeldType?>(null) }
     var sit by remember { mutableStateOf(initial) }
+    val steps = if (initial.riichi) listOf(EntryStep.KAN, EntryStep.HAND) else EntryStep.entries
+    var stepIdx by remember { mutableStateOf(if (guided) 0 else steps.lastIndex) }
+    val step = steps[stepIdx]
+    var kanType by remember { mutableStateOf(if (initial.riichi) MeldType.ANKAN else MeldType.MINKAN) }
+    fun modeOf(s: EntryStep) = when (s) {
+        EntryStep.CHI -> MeldType.CHI
+        EntryStep.PON -> MeldType.PON
+        EntryStep.KAN -> kanType
+        EntryStep.HAND -> null
+    }
+    var mode by remember { mutableStateOf(if (guided) modeOf(steps[0]) else null) }
+    fun goTo(i: Int) {
+        stepIdx = i
+        mode = modeOf(steps[i])
+    }
 
     val need = 14 - 3 * melds.size
+    val done = hand.size == need
     val used = IntArray(Tiles.COUNT).also { u ->
         hand.forEach { u[it]++ }
         melds.forEach { m -> m.tiles.forEach { u[it]++ } }
@@ -146,7 +148,9 @@ fun HandEntryDialog(
         if (m == null) hand = hand + t
         else {
             melds = melds + Meld(m, t)
-            mode = null
+            // 引導模式留在同一步（可能吃兩次）；副露滿四組就直接進手牌
+            if (!guided) mode = null
+            else if (melds.size == 4) goTo(steps.lastIndex)
         }
     }
 
@@ -156,16 +160,22 @@ fun HandEntryDialog(
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize()) {
-            Scaffold(topBar = { SimpleTopBar(tr("輸入手牌", "手牌入力"), onDismiss) }) { pad ->
+            Scaffold(topBar = { SimpleTopBar(title ?: tr("輸入手牌", "手牌入力"), onDismiss) }) { pad ->
                 Column(Modifier.padding(pad).fillMaxSize()) {
                     Column(
                         Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
                     ) {
+                        // 引導模式每一步只顯示該步的資訊；場風・自風・立直由對局帶入，不再顯示
                         // ---- 手牌 ----
+                        if (!guided || step == EntryStep.HAND) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             SectionTitle("手牌（門前）${hand.size} / $need")
                             Spacer(Modifier.weight(1f))
-                            TextButton(onClick = { hand = emptyList(); melds = emptyList(); mode = null }) {
+                            TextButton(onClick = {
+                                hand = emptyList()
+                                melds = emptyList()
+                                if (guided) goTo(0) else mode = null
+                            }) {
                                 Text(tr("全部清除", "全てクリア"))
                             }
                         }
@@ -207,8 +217,10 @@ fun HandEntryDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 4.dp),
                         )
+                        }
 
                         // ---- 副露 ----
+                        if (!guided || step != EntryStep.HAND) {
                         SectionTitle("副露")
                         if (melds.isEmpty()) {
                             Text(tr("無（門前）", "なし（門前）"), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -236,8 +248,39 @@ fun HandEntryDialog(
                                 modifier = Modifier.padding(top = 4.dp),
                             )
                         }
+                        }
+
+                        // ---- 引導模式最後一步：寶牌與系統無法判斷的特殊役 ----
+                        if (guided && done) {
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                modifier = Modifier.padding(top = 16.dp),
+                            ) {
+                                Stepper(tr("寶牌", "ドラ"), sit.dora) { sit = sit.copy(dora = it) }
+                                Stepper(tr("赤寶牌", "赤ドラ"), sit.akadora) { sit = sit.copy(akadora = it) }
+                                if (sit.riichi) Stepper(tr("裏寶牌", "裏ドラ"), sit.uradora) { sit = sit.copy(uradora = it) }
+                            }
+                            SectionTitle(tr("特殊役（有才選）", "特殊役（該当時のみ）"))
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                if (sit.riichi || sit.doubleRiichi) {
+                                    OptionChip(tr("兩立直", "ダブルリーチ"), sit.doubleRiichi) {
+                                        sit = sit.copy(doubleRiichi = it, riichi = !it)
+                                    }
+                                    OptionChip(tr("一發", "一発"), sit.ippatsu) { sit = sit.copy(ippatsu = it) }
+                                }
+                                OptionChip(if (sit.tsumo) "海底摸月" else "河底撈魚", sit.lastTile) { sit = sit.copy(lastTile = it) }
+                                if (sit.tsumo && melds.any { it.type == MeldType.MINKAN || it.type == MeldType.ANKAN }) {
+                                    OptionChip("嶺上開花", sit.rinshan) { sit = sit.copy(rinshan = it) }
+                                }
+                                if (!sit.tsumo) OptionChip("搶槓", sit.chankan) { sit = sit.copy(chankan = it) }
+                                if (sit.tsumo && melds.isEmpty()) {
+                                    OptionChip(if (sit.dealer) "天和" else "地和", sit.tenhou) { sit = sit.copy(tenhou = it) }
+                                }
+                            }
+                        }
 
                         // ---- 狀況 ----
+                        if (!guided) {
                         SectionTitle(tr("狀況", "状況"))
                         if (!lockTsumo) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -271,17 +314,21 @@ fun HandEntryDialog(
                                 sit = sit.copy(uradora = it)
                             }
                         }
+                        }
 
                         // ---- 判定結果 ----
-                        SectionTitle("判定結果")
-                        AnalysisDetail(analysis)
+                        if (!guided || done) {
+                            SectionTitle("判定結果")
+                            AnalysisDetail(analysis)
+                        }
                         Spacer(Modifier.height(16.dp))
                     }
 
                     // ---- 底部：結果摘要 + 牌選擇盤 ----
                     Surface(tonalElevation = 3.dp) {
                         Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp)) {
+                            // 引導模式中途沒有結果可套用：摘要與「套用」等手牌輸入完才出現
+                            if (!guided || done) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp)) {
                                 Text(
                                     summaryText(analysis, effSit, kiriage, LocalLang.current),
                                     Modifier.weight(1f),
@@ -290,12 +337,54 @@ fun HandEntryDialog(
                                     color = if (analysis is Analysis.Agari) MaterialTheme.colorScheme.primary
                                     else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                                // 上一步＝拿掉和了牌，回到選和了牌
+                                if (guided) TextButton(onClick = { hand = hand.dropLast(1) }) { Text(tr("上一步", "戻る")) }
                                 Button(
                                     onClick = { (analysis as? Analysis.Agari)?.let { onApply(it.result, effSit, hand, melds) } },
                                     enabled = analysis is Analysis.Agari,
                                 ) { Text(tr("套用", "適用")) }
                             }
-                            Row(
+                            if (guided) {
+                                if (!done) {
+                                val winLabel = if (sit.tsumo) tr("自摸牌", "アガリ牌") else tr("榮和牌", "アガリ牌")
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
+                                    Text(
+                                        when (step) {
+                                            EntryStep.CHI -> tr("有吃嗎？點選順子最小的那張", "チーした順子の一番小さい牌を選択")
+                                            EntryStep.PON -> tr("有碰嗎？點選碰的牌", "ポンした牌を選択")
+                                            EntryStep.KAN -> if (initial.riichi) tr("有暗槓嗎？點選槓的牌", "暗槓した牌を選択")
+                                            else tr("有槓嗎？點選槓的牌", "カンした牌を選択")
+                                            EntryStep.HAND -> when {
+                                                hand.size < need - 1 -> tr("選擇手牌", "手牌を選択") + " ${hand.size} / ${need - 1}"
+                                                hand.size == need - 1 -> tr("選擇", "") + winLabel + tr("", "を選択")
+                                                else -> ""
+                                            }
+                                        },
+                                        Modifier.weight(1f).padding(start = 8.dp),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        // 說明文字不用紅色：紅色在這個 App 代表放銃・和了牌・負分
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                    if (stepIdx > 0) TextButton(onClick = { goTo(stepIdx - 1) }) { Text(tr("上一步", "戻る")) }
+                                    if (step != EntryStep.HAND) {
+                                        FilledTonalButton(onClick = { goTo(stepIdx + 1) }) {
+                                            Text(tr("下一步", "次へ"))
+                                        }
+                                    }
+                                }
+                                if (step == EntryStep.KAN && !initial.riichi) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(start = 8.dp)) {
+                                        listOf(MeldType.MINKAN, MeldType.ANKAN).forEach { t ->
+                                            FilterChip(
+                                                selected = kanType == t,
+                                                onClick = { kanType = t; mode = t },
+                                                label = { Text(t.label(LocalLang.current)) },
+                                            )
+                                        }
+                                    }
+                                }
+                                }
+                            } else Row(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 modifier = Modifier.padding(vertical = 4.dp),
                             ) {
@@ -309,7 +398,7 @@ fun HandEntryDialog(
                                     )
                                 }
                             }
-                            if (mode == MeldType.CHI) {
+                            if (!guided && mode == MeldType.CHI) {
                                 Text(
                                     tr("請點選順子中最小的那張牌", "順子の一番小さい牌を選んでください"),
                                     style = MaterialTheme.typography.bodySmall,
@@ -317,7 +406,8 @@ fun HandEntryDialog(
                                     modifier = Modifier.padding(start = 8.dp, bottom = 4.dp),
                                 )
                             }
-                            TilePalette(::canPick, ::pick)
+                            // 手牌已滿時整盤都不能點，引導模式直接收起（點手牌移除一張就會再出現）
+                            if (!(guided && done)) TilePalette(::canPick, ::pick)
                         }
                     }
                 }

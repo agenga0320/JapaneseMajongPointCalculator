@@ -14,7 +14,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mahjong.score.ui.CalcScreen
-import com.mahjong.score.ui.DrawScreen
 import com.mahjong.score.ui.GameScreen
 import com.mahjong.score.ui.HistoryScreen
 import com.mahjong.score.ui.HomeScreen
@@ -36,8 +35,7 @@ private sealed interface Screen {
     data object Home : Screen
     data object Setup : Screen
     data object Game : Screen
-    data object Win : Screen
-    data object Draw : Screen
+    data class Win(val tsumo: Boolean, val winners: Set<Int>, val loser: Int?) : Screen
     data object Calc : Screen
     data class History(val id: Long) : Screen
 }
@@ -68,13 +66,11 @@ private fun AppContent(vm: GameViewModel) {
         Screen.Setup -> SetupScreen(vm, onStart = { stack = listOf(Screen.Home, Screen.Game) }, onBack = ::pop)
         Screen.Game -> GameScreen(
             vm,
-            onWin = { push(Screen.Win) },
-            onDraw = { push(Screen.Draw) },
+            onWin = { tsumo, winners, loser -> push(Screen.Win(tsumo, winners, loser)) },
             onArchived = { id -> stack = listOf(Screen.Home, Screen.History(id)) },
             onBack = ::pop,
         )
-        Screen.Win -> WinScreen(vm, onDone = ::pop, onBack = ::pop)
-        Screen.Draw -> DrawScreen(vm, onDone = ::pop, onBack = ::pop)
+        is Screen.Win -> WinScreen(vm, screen.tsumo, screen.winners, screen.loser, onDone = ::pop, onBack = ::pop)
         Screen.Calc -> CalcScreen(onBack = ::pop)
         is Screen.History -> {
             val game = vm.history.firstOrNull { it.id == screen.id }

@@ -11,6 +11,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -59,36 +63,68 @@ fun HomeScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (current != null) {
-                item {
-                    Card(
-                        onClick = onContinue,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                    ) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text(tr("進行中的半莊", "進行中の半荘"), style = MaterialTheme.typography.labelLarge)
-                            Text(
-                                if (current.finished) tr("已結束（尚未保存）", "終了（未保存）") else current.roundTitle,
-                                style = MaterialTheme.typography.titleLarge,
-                            )
-                            Text(
-                                current.names.indices.joinToString("　") { "${current.names[it]} ${current.state.scores[it]}" },
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(vertical = 4.dp),
-                            )
-                            Button(onClick = onContinue, modifier = Modifier.padding(top = 8.dp)) { Text(tr("繼續", "続ける")) }
-                        }
-                    }
-                }
-            }
+            // 首頁主視覺：跟對局桌面同一塊呢布，主要動作放在上面
             item {
-                val label = tr("開始新半莊", "新しい半荘を始める")
-                // 有進行中的半莊時「繼續」才是主要動作，新半莊降為次要
-                if (current != null) {
-                    OutlinedButton(onClick = { confirmNew = true }, modifier = Modifier.fillMaxWidth()) { Text(label) }
-                } else {
-                    Button(onClick = onNew, modifier = Modifier.fillMaxWidth()) { Text(label) }
+                val tc = tableColors()
+                Column(
+                    Modifier.fillMaxWidth().background(Brush.radialGradient(listOf(tc.felt, tc.feltEdge), radius = 1200f), MaterialTheme.shapes.large).padding(20.dp),
+                ) {
+                    if (current != null) {
+                        Text(
+                            if (current.finished) tr("已結束（尚未保存）", "終了（未保存）") else current.roundTitle,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = tc.onFelt,
+                        )
+                        Row(Modifier.fillMaxWidth().padding(top = 12.dp)) {
+                            current.names.indices.forEach { p ->
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        current.names[p],
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = tc.onFeltMuted,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    Text(
+                                        "${current.displayScore(p)}",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = tc.onFelt,
+                                    )
+                                }
+                            }
+                        }
+                        Button(
+                            onClick = onContinue,
+                            colors = ButtonDefaults.buttonColors(containerColor = tc.gold, contentColor = tc.onGold),
+                            modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+                        ) { Text(tr("繼續", "続ける"), style = MaterialTheme.typography.titleMedium) }
+                        // 有進行中的半莊時「繼續」才是主要動作，新半莊降為呢布上的文字按鈕
+                        TextButton(
+                            onClick = { confirmNew = true },
+                            colors = ButtonDefaults.textButtonColors(contentColor = tc.onFeltMuted),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(tr("開始新半莊", "新しい半荘を始める")) }
+                    } else {
+                        Text(
+                            tr("記錄一場半莊", "半荘を記録する"),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = tc.onFelt,
+                        )
+                        Text(
+                            tr("手機放在桌子中間，四家一起用", "スマホを卓の真ん中に置いて、4人で使えます"),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = tc.onFeltMuted,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                        Button(
+                            onClick = onNew,
+                            colors = ButtonDefaults.buttonColors(containerColor = tc.gold, contentColor = tc.onGold),
+                            modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+                        ) { Text(tr("開始新半莊", "新しい半荘を始める"), style = MaterialTheme.typography.titleMedium) }
+                    }
                 }
             }
             item {
@@ -135,8 +171,13 @@ fun HomeScreen(
 
 @Composable
 private fun HistoryCard(game: Game, onClick: () -> Unit) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp)) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Column(Modifier.padding(16.dp)) {
             Text(
                 "${dateText(game.startedAt)}　${game.records.size}局",
                 style = MaterialTheme.typography.labelMedium,

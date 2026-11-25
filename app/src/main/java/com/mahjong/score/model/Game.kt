@@ -71,7 +71,13 @@ data class Game(
     val finished: Boolean = false,
     /** 手動結束（而非打完南4局或擊飛） */
     val manualEnd: Boolean = false,
+    /** 本局已宣告立直、尚未記錄到和了／流局的玩家（點棒先顯示為已拿出） */
+    val riichi: Set<Int> = emptySet(),
 ) {
+    /** 扣掉本局立直棒後的顯示點數 */
+    fun displayScore(p: Int) = state.scores[p] - if (p in riichi) 1000 else 0
+    val displayKyotaku: Int get() = state.kyotaku + riichi.size
+
     val dealer: Int get() = state.kyoku % 4
     val roundTitle: String get() = roundTitle(state)
     fun seatWind(p: Int) = WINDS[(p - dealer + 4) % 4]
@@ -241,13 +247,13 @@ object GameLogic {
             // 南4局結束時或西場中，有人達返點即結束；否則（繼續）進入／留在西場
             else -> next.scores.any { it >= r.returnPoints }
         }
-        return game.copy(state = next, records = game.records + rec, finished = over, manualEnd = false)
+        return game.copy(state = next, records = game.records + rec, finished = over, manualEnd = false, riichi = emptySet())
     }
 
     fun undo(game: Game): Game {
         if (game.finished && game.manualEnd) return game.copy(finished = false, manualEnd = false)
         val last = game.records.lastOrNull() ?: return game
-        return game.copy(state = last.before, records = game.records.dropLast(1), finished = false, manualEnd = false)
+        return game.copy(state = last.before, records = game.records.dropLast(1), finished = false, manualEnd = false, riichi = emptySet())
     }
 
     /** 名次順（同分時起家較近者優先） */

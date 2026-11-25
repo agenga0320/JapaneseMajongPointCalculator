@@ -1,11 +1,16 @@
 package com.mahjong.score.data
 
+import android.content.res.Resources
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import com.mahjong.score.R
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.RadialGradient
 import android.graphics.RectF
+import android.graphics.Shader
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import android.text.StaticLayout
@@ -31,7 +36,7 @@ import kotlin.math.min
  * 半莊紀錄的報表（A4）。由上到下：標題・規則 → 各局（局數、結果、和了手牌圖、點數移動圖）→ 排名。
  * 輸出為 PDF，或每頁一張 PNG（Instagram 等不收 PDF 的 App 用）。
  */
-class RecordReport(private val game: Game, private val lang: AppLang) {
+class RecordReport(private val game: Game, private val lang: AppLang, private val res: Resources) {
     private val names = game.names
 
     private class Block(val height: Float, val draw: (Canvas, Float) -> Unit)
@@ -55,13 +60,21 @@ class RecordReport(private val game: Game, private val lang: AppLang) {
         const val SEAT_DX = 158f
         const val POT_R = 17f
 
-        val INK = Color.rgb(0x21, 0x21, 0x21)
-        val MUTED = Color.rgb(0x75, 0x75, 0x75)
-        val PRIMARY = Color.rgb(0x2E, 0x7D, 0x32)
-        val PLUS = Color.rgb(0x2E, 0x7D, 0x32)
-        val MINUS = Color.rgb(0xC6, 0x28, 0x28)
-        val DIVIDER = Color.rgb(0xE0, 0xE0, 0xE0)
-        val ARROW = Color.rgb(0x54, 0x6E, 0x7A)
+        // 跟 App 對局桌面同一組：暗色呢布頁面、深色面板、亮色字、金色標題與箭頭
+        val INK = Color.rgb(0xF4, 0xEE, 0xDF)
+        val MUTED = Color.rgb(0x9F, 0xC0, 0xB4)
+        val PRIMARY = Color.rgb(0xE9, 0xC4, 0x6A)
+        val PLUS = Color.rgb(0x7F, 0xD1, 0xB0)
+        val MINUS = Color.rgb(0xFF, 0x86, 0x78)
+        val DIVIDER = Color.rgb(0x2C, 0x5A, 0x4E)
+        val ARROW = Color.rgb(0xE9, 0xC4, 0x6A)
+        val GOLD = Color.rgb(0xE9, 0xC4, 0x6A)
+        val RED = Color.rgb(0xE5, 0x58, 0x4B)
+        val FELT = Color.rgb(0x1B, 0x55, 0x47)
+        val FELT_EDGE = Color.rgb(0x0A, 0x24, 0x1E)
+        val PANEL = Color.rgb(0x0F, 0x2C, 0x25)
+        val PANEL_BORDER = Color.rgb(0x3B, 0x72, 0x62)
+        val PLATE = Color.rgb(0x0A, 0x22, 0x1C)
     }
 
     private fun textPaint(size: Float, color: Int = INK, bold: Boolean = false, center: Boolean = false) =
@@ -72,7 +85,7 @@ class RecordReport(private val game: Game, private val lang: AppLang) {
             if (center) textAlign = Paint.Align.CENTER
         }
 
-    private val pTitle = textPaint(18f, bold = true)
+    private val pTitle = textPaint(22f, PRIMARY, bold = true)
     private val pHeading = textPaint(12.5f, PRIMARY, bold = true)
     private val pBody = textPaint(10.5f)
     private val pSmall = textPaint(8.5f, MUTED)
@@ -125,7 +138,7 @@ class RecordReport(private val game: Game, private val lang: AppLang) {
             c.drawLayout(date, M, y); y += date.hf + 8
             c.drawLayout(players, M, y); y += players.hf + 2
             c.drawLayout(rules, M, y)
-            c.drawLine(M, top + h - 6, W - M, top + h - 6, pDivider)
+            c.drawLine(M, top + h - 6, W - M, top + h - 6, Paint().apply { color = GOLD; strokeWidth = 1.2f })
         }
     }
 
@@ -135,8 +148,9 @@ class RecordReport(private val game: Game, private val lang: AppLang) {
         val desc = layout(GameLogic.describe(rec, names, game.rules, lang), pBody)
         val hands = rec.wins.filter { it.hand.isNotEmpty() }
         val handH = 12f + TILE_H + 11f
-        val h = title.hf + 3 + desc.hf + 8 + hands.size * (handH + 4) + DIAG_H + 16
+        val h = title.hf + 3 + desc.hf + 8 + hands.size * (handH + 4) + DIAG_H + 26
         return Block(h) { c, top ->
+            drawPanel(c, RectF(M - 12, top - 8, W - M + 12, top + h - 10))
             var y = top
             c.drawLayout(title, M, y); y += title.hf + 3
             c.drawLayout(desc, M, y); y += desc.hf + 8
@@ -146,7 +160,6 @@ class RecordReport(private val game: Game, private val lang: AppLang) {
                 y += handH + 4
             }
             drawTransferDiagram(c, y, rec)
-            c.drawLine(M, top + h - 6, W - M, top + h - 6, pDivider)
         }
     }
 
@@ -156,7 +169,7 @@ class RecordReport(private val game: Game, private val lang: AppLang) {
         val note = if (game.state.kyotaku > 0) {
             layout(t("剩餘供託 ${game.state.kyotaku * 1000} 點歸第1名", "残り供託 ${game.state.kyotaku * 1000} 点はトップへ"), pSmall)
         } else null
-        val rowH = 20f
+        val rowH = 30f
         val h = heading.hf + 8 + rows.size * rowH + (note?.let { it.hf + 4 } ?: 0f) + 8
         val pName = textPaint(11f)
         val pScore = textPaint(11f).apply { textAlign = Paint.Align.RIGHT }
@@ -165,12 +178,18 @@ class RecordReport(private val game: Game, private val lang: AppLang) {
             var y = top
             c.drawLayout(heading, M, y); y += heading.hf + 8
             rows.forEach { s ->
-                val base = y + 14
-                c.drawText("${s.rank}位", M, base, pRank)
-                c.drawText(names[s.player], M + 44, base, pName)
+                val plate = RectF(M - 4, y, W - M + 4, y + rowH - 6)
+                pFill.color = PLATE
+                c.drawRoundRect(plate, 6f, 6f, pFill)
+                pStroke.color = if (s.rank == 1) GOLD else PANEL_BORDER; pStroke.strokeWidth = if (s.rank == 1) 1.2f else 0.7f
+                c.drawRoundRect(plate, 6f, 6f, pStroke)
+                val base = y + 16
+                pRank.color = if (s.rank == 1) GOLD else INK
+                c.drawText("${s.rank}位", M + 6, base, pRank)
+                c.drawText(names[s.player], M + 50, base, pName)
                 c.drawText("${s.score}", W - M - 90, base, pScore)
                 pPt.color = if (s.pt >= 0) PLUS else MINUS
-                c.drawText(String.format(Locale.US, "%+.1f", s.pt), W - M, base, pPt)
+                c.drawText(String.format(Locale.US, "%+.1f", s.pt), W - M - 6, base, pPt)
                 y += rowH
             }
             note?.let { c.drawLayout(it, M, y + 4) }
@@ -179,36 +198,23 @@ class RecordReport(private val game: Game, private val lang: AppLang) {
 
     // ---- 手牌圖 ----
 
-    private fun tileColor(t: Int): Int = when {
-        t < 9 -> Color.rgb(0xC6, 0x28, 0x28)
-        t < 18 -> Color.rgb(0x15, 0x65, 0xC0)
-        t < 27 -> Color.rgb(0x2E, 0x7D, 0x32)
-        t == 31 -> Color.rgb(0x75, 0x75, 0x75)
-        t == 32 -> Color.rgb(0x2E, 0x7D, 0x32)
-        t == 33 -> Color.rgb(0xC6, 0x28, 0x28)
-        else -> INK
-    }
+    private val TILE_IDS = intArrayOf(R.drawable.tile_0, R.drawable.tile_1, R.drawable.tile_2, R.drawable.tile_3, R.drawable.tile_4, R.drawable.tile_5, R.drawable.tile_6, R.drawable.tile_7, R.drawable.tile_8, R.drawable.tile_9, R.drawable.tile_10, R.drawable.tile_11, R.drawable.tile_12, R.drawable.tile_13, R.drawable.tile_14, R.drawable.tile_15, R.drawable.tile_16, R.drawable.tile_17, R.drawable.tile_18, R.drawable.tile_19, R.drawable.tile_20, R.drawable.tile_21, R.drawable.tile_22, R.drawable.tile_23, R.drawable.tile_24, R.drawable.tile_25, R.drawable.tile_26, R.drawable.tile_27, R.drawable.tile_28, R.drawable.tile_29, R.drawable.tile_30, R.drawable.tile_31, R.drawable.tile_32, R.drawable.tile_33)
 
-    private val pTileRank = textPaint(11f, bold = true, center = true)
-    private val pTileSuit = textPaint(6.5f, center = true)
+    // 牌面圖片與 App 內相同（res/drawable-nodpi/tile_0..33），用到才解碼
+    private val tileBitmaps = arrayOfNulls<Bitmap>(Tiles.COUNT)
+    private val pBitmap = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+
+    private fun tileBitmap(tile: Int): Bitmap = tileBitmaps[tile] ?: BitmapFactory.decodeResource(
+        res, TILE_IDS[tile],
+    ).also { tileBitmaps[tile] = it }
 
     private fun drawTile(c: Canvas, x: Float, y: Float, tile: Int, highlight: Boolean) {
         val r = RectF(x, y, x + TILE_W, y + TILE_H)
-        pFill.color = Color.rgb(0xFF, 0xFB, 0xF0)
-        c.drawRoundRect(r, 2.5f, 2.5f, pFill)
-        pStroke.color = if (highlight) MINUS else Color.rgb(0xB0, 0xA8, 0x98)
-        pStroke.strokeWidth = if (highlight) 1.6f else 0.8f
-        c.drawRoundRect(r, 2.5f, 2.5f, pStroke)
-        val cx = x + TILE_W / 2
-        pTileRank.color = tileColor(tile)
-        if (Tiles.isHonor(tile)) {
-            pTileRank.textSize = 12f
-            c.drawText(Tiles.rankText(tile), cx, y + TILE_H / 2 + 4.5f, pTileRank)
-        } else {
-            pTileRank.textSize = 11f
-            c.drawText(Tiles.rankText(tile), cx, y + 12f, pTileRank)
-            pTileSuit.color = tileColor(tile)
-            c.drawText(Tiles.suitText(tile), cx, y + TILE_H - 4f, pTileSuit)
+        c.drawBitmap(tileBitmap(tile), null, r, pBitmap)
+        if (highlight) {
+            pStroke.color = MINUS
+            pStroke.strokeWidth = 1.6f
+            c.drawRoundRect(r, 2.5f, 2.5f, pStroke)
         }
     }
 
@@ -249,17 +255,19 @@ class RecordReport(private val game: Game, private val lang: AppLang) {
         val pot = Node(cx, cy, POT_R, POT_R, true)
         fun node(i: Int) = if (i == Transfer.POT) pot else seatNode(i)
 
-        // 桌面
-        pFill.color = Color.rgb(0xF1, 0xF8, 0xF1)
-        c.drawRoundRect(RectF(cx - SEAT_DX + 20, top + 26, cx + SEAT_DX - 20, top + DIAG_H - 26), 8f, 8f, pFill)
+        // 桌面：中央亮、四周暗的呢布
+        val table = RectF(cx - SEAT_DX + 20, top + 26, cx + SEAT_DX - 20, top + DIAG_H - 26)
+        pFill.shader = RadialGradient(cx, cy, table.width() / 1.6f, FELT, FELT_EDGE, Shader.TileMode.CLAMP)
+        c.drawRoundRect(table, 10f, 10f, pFill)
+        pFill.shader = null
+        pStroke.color = PANEL_BORDER; pStroke.strokeWidth = 0.7f
+        c.drawRoundRect(table, 10f, 10f, pStroke)
 
         val transfers = GameLogic.transfers(game, rec)
         if (transfers != null && transfers.any { it.from == Transfer.POT || it.to == Transfer.POT }) {
-            pFill.color = Color.rgb(0xFF, 0xF8, 0xE1)
+            pFill.color = GOLD
             c.drawCircle(cx, cy, POT_R, pFill)
-            pStroke.color = Color.rgb(0xF9, 0xA8, 0x25); pStroke.strokeWidth = 0.8f
-            c.drawCircle(cx, cy, POT_R, pStroke)
-            c.drawText("供託", cx, cy + 3.5f, textPaint(8.5f, INK, bold = true, center = true))
+            c.drawText("供託", cx, cy + 3.5f, textPaint(8.5f, Color.rgb(0x2B, 0x20, 0x00), bold = true, center = true))
         }
         transfers?.forEach { tr ->
             val reverse = transfers.any { it.from == tr.to && it.to == tr.from }
@@ -274,13 +282,13 @@ class RecordReport(private val game: Game, private val lang: AppLang) {
 
     private fun drawSeat(c: Canvas, n: Node, p: Int, wind: String, dealer: Boolean, delta: Int, after: Int) {
         val r = RectF(n.cx - n.halfW, n.cy - n.halfH, n.cx + n.halfW, n.cy + n.halfH)
-        pFill.color = if (dealer) Color.rgb(0xFF, 0xEB, 0xEE) else Color.rgb(0xF5, 0xF5, 0xF5)
-        c.drawRoundRect(r, 5f, 5f, pFill)
-        pStroke.color = if (dealer) Color.rgb(0xEF, 0x9A, 0x9A) else Color.rgb(0xBD, 0xBD, 0xBD)
-        pStroke.strokeWidth = 0.8f
-        c.drawRoundRect(r, 5f, 5f, pStroke)
+        pFill.color = PLATE
+        c.drawRoundRect(r, 6f, 6f, pFill)
+        pStroke.color = if (dealer) RED else PANEL_BORDER
+        pStroke.strokeWidth = if (dealer) 1.2f else 0.8f
+        c.drawRoundRect(r, 6f, 6f, pStroke)
 
-        val pLine1 = textPaint(9.5f, INK, bold = true, center = true)
+        val pLine1 = textPaint(9.5f, if (dealer) RED else INK, bold = true, center = true)
         val label = "$wind${if (dealer) "・親" else ""}　" +
             TextUtils.ellipsize(names[p], pLine1, SEAT_W - 44, TextUtils.TruncateAt.END)
         c.drawText(label, n.cx, n.cy - 4, pLine1)
@@ -322,14 +330,14 @@ class RecordReport(private val game: Game, private val lang: AppLang) {
 
         // 金額標籤
         val label = "$amount"
-        val pLabel = textPaint(8.5f, INK, bold = true, center = true)
+        val pLabel = textPaint(8.5f, GOLD, bold = true, center = true)
         val mx = (x1 + x2) / 2
         val my = (y1 + y2) / 2
-        val tw = pLabel.measureText(label) / 2 + 3f
-        pFill.color = Color.WHITE
-        c.drawRoundRect(RectF(mx - tw, my - 7f, mx + tw, my + 5f), 3f, 3f, pFill)
-        pStroke.color = DIVIDER; pStroke.strokeWidth = 0.6f
-        c.drawRoundRect(RectF(mx - tw, my - 7f, mx + tw, my + 5f), 3f, 3f, pStroke)
+        val tw = pLabel.measureText(label) / 2 + 4f
+        pFill.color = PLATE
+        c.drawRoundRect(RectF(mx - tw, my - 7.5f, mx + tw, my + 5.5f), 6f, 6f, pFill)
+        pStroke.color = GOLD; pStroke.strokeWidth = 0.6f
+        c.drawRoundRect(RectF(mx - tw, my - 7.5f, mx + tw, my + 5.5f), 6f, 6f, pStroke)
         c.drawText(label, mx, my + 2.5f, pLabel)
     }
 
@@ -358,7 +366,19 @@ class RecordReport(private val game: Game, private val lang: AppLang) {
         return pages
     }
 
+    /** 每局的深色面板 */
+    private fun drawPanel(c: Canvas, r: RectF) {
+        pFill.color = PANEL
+        c.drawRoundRect(r, 10f, 10f, pFill)
+        pStroke.color = PANEL_BORDER; pStroke.strokeWidth = 0.7f
+        c.drawRoundRect(r, 10f, 10f, pStroke)
+    }
+
     private fun drawPage(c: Canvas, blocks: List<Block>, index: Int, count: Int) {
+        // 整頁是暗色呢布，中央偏上最亮
+        pFill.shader = RadialGradient(W / 2, H * 0.35f, H * 0.8f, FELT, FELT_EDGE, Shader.TileMode.CLAMP)
+        c.drawRect(0f, 0f, W, H, pFill)
+        pFill.shader = null
         var y = M
         blocks.forEach { b ->
             b.draw(c, y)

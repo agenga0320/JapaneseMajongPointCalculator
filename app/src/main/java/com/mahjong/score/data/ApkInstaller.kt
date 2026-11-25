@@ -4,8 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
-import androidx.core.content.FileProvider
-import java.io.File
 
 /** 開啟系統安裝程式安裝下載好的 APK */
 object ApkInstaller {
@@ -20,8 +18,8 @@ object ApkInstaller {
         )
     }
 
-    fun install(context: Context, apk: File) {
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", apk)
+    /** uri：下載管理員提供的已下載檔案 */
+    fun install(context: Context, uri: Uri) {
         context.startActivity(
             Intent(Intent.ACTION_VIEW)
                 .setDataAndType(uri, "application/vnd.android.package-archive")

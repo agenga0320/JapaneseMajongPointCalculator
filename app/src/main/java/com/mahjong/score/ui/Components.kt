@@ -19,6 +19,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.compositionLocalOf
@@ -28,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,8 +61,17 @@ fun dateText(millis: Long): String = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SimpleTopBar(title: String, onBack: (() -> Unit)?, actions: @Composable RowScope.() -> Unit = {}) {
+fun SimpleTopBar(
+    title: String,
+    onBack: (() -> Unit)?,
+    /** 標題列底色與圖示色；Unspecified＝主題預設 */
+    containerColor: Color = Color.Unspecified,
+    iconColor: Color = Color.Unspecified,
+    actions: @Composable RowScope.() -> Unit = {},
+) {
     TopAppBar(
+        colors = if (containerColor == Color.Unspecified) TopAppBarDefaults.topAppBarColors()
+        else TopAppBarDefaults.topAppBarColors(containerColor = containerColor, navigationIconContentColor = iconColor, actionIconContentColor = iconColor),
         title = { Text(title) },
         navigationIcon = {
             if (onBack != null) {
